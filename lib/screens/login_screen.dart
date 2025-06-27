@@ -12,11 +12,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
-  // 이메일, 비밀번호 컨트롤러 추가
+  // 이메일, 비밀번호 컨트롤러 추가.
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // 1) 로그인 함수
+  // 1) 로그인 함수.
   Future<void> _signIn() async {
 
     try {
@@ -27,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 성공!')),
       );
+
 
       // 로그인 성공 후 화면 이동 처리 (예: 홈 화면으로)
       // Navigator.pushReplacement(...);
