@@ -24,13 +24,13 @@ class _SignInScreenState extends State<SignInScreen> {
 
     if (_formKey.currentState!.validate()) {
       try {
-        // 이메일/비밀번호로 회원가입 시도.
+        // 이메일/비밀번호로 회원가입 시도
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // 닉네임은 User 프로필에 저장 가능 (optional).
+        // 닉네임은 User 프로필에 저장 가능 (optional)
         await userCredential.user!.updateDisplayName(_nicknameController.text.trim());
 
         ScaffoldMessenger.of(context).showSnackBar(
