@@ -30,7 +30,7 @@ class _SignInScreenState extends State<SignInScreen> {
           password: _passwordController.text.trim(),
         );
 
-        // 닉네임은 User 프로필에 저장 가능 (optional)
+        // 닉네임은 User 프로필에 저장 가능 (optional).
         await userCredential.user!.updateDisplayName(_nicknameController.text.trim());
 
         ScaffoldMessenger.of(context).showSnackBar(
