@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 import 'signin_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,11 +13,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
-  // 이메일, 비밀번호 컨트롤러 추가.
+  // 이메일, 비밀번호 컨트롤러 추가
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // 1) 로그인 함수
+  // 1) 로그인 함수.
   Future<void> _signIn() async {
 
     try {
@@ -28,9 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
         const SnackBar(content: Text('로그인 성공!')),
       );
 
-
-      // 로그인 성공 후 화면 이동 처리 (예: 홈 화면으로)
-      // Navigator.pushReplacement(...);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
 
     } on FirebaseAuthException catch (e) {
       String message = '로그인 실패';
