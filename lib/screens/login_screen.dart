@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 import 'signin_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,9 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
         const SnackBar(content: Text('로그인 성공!')),
       );
 
-
-      // 로그인 성공 후 화면 이동 처리 (예: 홈 화면으로)
-      // Navigator.pushReplacement(...);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
 
     } on FirebaseAuthException catch (e) {
       String message = '로그인 실패';
