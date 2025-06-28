@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 
 class SignInScreen extends StatefulWidget {
@@ -36,7 +37,12 @@ class _SignInScreenState extends State<SignInScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 완료!')),
         );
-        Navigator.pop(context);  // 가입 완료 후 이전 화면으로 돌아가기
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+        );
+
       } on FirebaseAuthException catch (e) {
         // 여기서 에러 코드랑 메시지 출력
         print('FirebaseAuthException code: ${e.code}');
@@ -139,8 +145,11 @@ class _SignInScreenState extends State<SignInScreen> {
                   labelText: '닉네임',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                value != null && value.isNotEmpty ? null : '닉네임을 입력하세요',
+                validator: (value) {
+                  if (value == null || value.isEmpty) return '닉네임을 입력하세요';
+                  if (value.length > 6) return '닉네임은 6자 이하로 입력해주세요';
+                  return null;
+                },
               ),
               const SizedBox(height: 30),
 
