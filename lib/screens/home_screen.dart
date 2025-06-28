@@ -14,7 +14,7 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              // 로그아웃 처리
+              // 로그아웃 처리.
               await FirebaseAuth.instance.signOut();
               Navigator.pushReplacement(
                 context,

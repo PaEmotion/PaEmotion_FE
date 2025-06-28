@@ -9,9 +9,9 @@ import 'screens/home_screen.dart';
 
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 2. 플러터 바인딩 초기화
-  await Firebase.initializeApp(); // 3. 파이어베이스 초기화
-  runApp(const MyApp()); // 4. 앱 실행
+  WidgetsFlutterBinding.ensureInitialized(); // 플러터 바인딩 초기화
+  await Firebase.initializeApp(); // 파이어베이스 초기화
+  runApp(const MyApp()); // 앱 실행
 }
 
 class MyApp extends StatelessWidget {
