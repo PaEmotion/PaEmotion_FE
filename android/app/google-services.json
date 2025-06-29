@@ -12,7 +12,20 @@
           "package_name": "com.example.paemotion"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "623976511544-cbtkg8lahih7u0ooghbrgtpqdm31iphk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.paemotion",
+            "certificate_hash": "583dda592bbcd129abf07d2ea759a421c8384968"
+          }
+        },
+        {
+          "client_id": "623976511544-qfmalnncgdjbq7scuqkg0gkhj01jito7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZmEAVOxqipbIVE5DysnoIlcYXfwQT1nY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "623976511544-qfmalnncgdjbq7scuqkg0gkhj01jito7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "623976511544-n0ln9a11tho9ooic43mqf23umvdklegj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.paemotion"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +56,12 @@
           "package_name": "com.sdkjf.example"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "623976511544-qfmalnncgdjbq7scuqkg0gkhj01jito7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZmEAVOxqipbIVE5DysnoIlcYXfwQT1nY"
@@ -39,7 +69,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "623976511544-qfmalnncgdjbq7scuqkg0gkhj01jito7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "623976511544-n0ln9a11tho9ooic43mqf23umvdklegj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.paemotion"
+              }
+            }
+          ]
         }
       }
     }

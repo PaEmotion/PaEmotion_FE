@@ -72,9 +72,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        if (doc.exists && doc.data()!.containsKey('name')) {
+        if (doc.exists && doc.data() != null && doc.data()!.containsKey('name')) {
           setState(() {
             _userName = doc['name'];
+            _isLoadingName = false;
+          });
+        } else {
+          setState(() {
+            _userName = null;
             _isLoadingName = false;
           });
         }
