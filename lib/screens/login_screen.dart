@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 import 'signin_screen.dart';
 import 'home_screen.dart';
@@ -18,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // 1) 로그인 함수.
+  // 1) 이메일 로그인 함수.
   Future<void> _signIn() async {
 
     try {
@@ -48,6 +50,55 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('에러 발생: $e')),
+      );
+    }
+  }
+
+  // 2. 구글 로그인 함수
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        // 사용자가 로그인 창 닫음
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final email = FirebaseAuth.instance.currentUser?.email;
+      final name = FirebaseAuth.instance.currentUser?.displayName;
+
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final docSnapshot = await userRef.get();
+
+      if (!docSnapshot.exists) {
+        await userRef.set({
+          'name': name ?? email ?? '사용자',
+          'email': email,
+          'createdAt': Timestamp.now(),
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('구글 로그인 성공!')),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('구글 로그인 실패: $e')),
       );
     }
   }
@@ -104,6 +155,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 10.0),
+
+              const SizedBox(height: 5.0),
+
+              // 구글 로그인 버튼
+              ElevatedButton.icon(
+                onPressed: _signInWithGoogle,
+                icon: const Icon(Icons.login),
+                label: const Text('구글 계정으로 로그인'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+
+
 
               // 회원가입 버튼
               TextButton(
