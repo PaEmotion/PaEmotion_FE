@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'signinsuccess_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 
 class SignInScreen extends StatefulWidget {
@@ -22,18 +23,31 @@ class _SignInScreenState extends State<SignInScreen> {
 
   // 1) 회원가입 함수
   Future<void> _signUp() async {
-
     if (_formKey.currentState!.validate()) {
       try {
-        // 이메일/비밀번호로 회원가입 시도
-        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final name = _nicknameController.text.trim();
+
+        // 이메일/비밀번호 회원가입
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // 닉네임은 User 프로필에 저장 가능 (optional)
-        await userCredential.user!.updateDisplayName(_nicknameController.text.trim());
+        // Firebase Auth의 displayName 업데이트
+        await userCredential.user!.updateDisplayName(name);
 
+        // Firestore에 사용자 정보 저장
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+          'email': _emailController.text.trim(),
+          'name': name,
+          'createdAt': Timestamp.now(),
+        });
+
+        // 가입 완료 후 화면 이동
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 완료!')),
         );
@@ -41,12 +55,8 @@ class _SignInScreenState extends State<SignInScreen> {
           context,
           MaterialPageRoute(builder: (context) => const SignInSuccessScreen()),
         );
-
       } on FirebaseAuthException catch (e) {
-        // 여기서 에러 코드랑 메시지 출력
         print('FirebaseAuthException code: ${e.code}');
-        print('FirebaseAuthException message: ${e.message}');
-
         String message = '회원가입 실패';
         if (e.code == 'weak-password') {
           message = '비밀번호가 너무 약합니다.';
@@ -63,6 +73,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     }
   }
+
 
 
   @override
@@ -137,16 +148,17 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 닉네임
+
+              // 이름
               TextFormField(
-                controller: _nicknameController,
+                controller: _nicknameController, // controller는 그대로 써도 돼
                 decoration: const InputDecoration(
-                  labelText: '닉네임',
+                  labelText: '이름',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return '닉네임을 입력하세요';
-                  if (value.length > 6) return '닉네임은 6자 이하로 입력해주세요';
+                  if (value == null || value.isEmpty) return '이름을 입력하세요';
+                  if (value.length > 6) return '이름은 6자 이하로 입력해주세요';
                   return null;
                 },
               ),
