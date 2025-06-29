@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'signinsuccess_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 
 class SignInScreen extends StatefulWidget {
@@ -37,10 +37,9 @@ class _SignInScreenState extends State<SignInScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 완료!')),
         );
-        Navigator.pushAndRemoveUntil(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (route) => false,
+          MaterialPageRoute(builder: (context) => const SignInSuccessScreen()),
         );
 
       } on FirebaseAuthException catch (e) {
