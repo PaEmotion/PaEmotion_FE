@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/rendering.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'login_screen.dart';
 import 'aichat_screen.dart';
 import 'report_screen.dart';
 import 'budget_screen.dart';
 import 'challenge_screen.dart';
+import 'mypage_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +31,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     const ChallengeScreen(),
   ];
 
+  String? _userName;
+  bool _isLoadingName = true;
+
   @override
   void initState() {
     super.initState();
@@ -42,29 +48,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       end: const Offset(0, 1),
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    // 첫 화면에서는 하단바 visible
     _controller.reverse(from: 1.0);
 
     _scrollController.addListener(() {
       final direction = _scrollController.position.userScrollDirection;
 
       if (direction == ScrollDirection.reverse) {
-        // 스크롤 내릴 때 하단바 invisible
         if (_controller.status != AnimationStatus.forward && _controller.status != AnimationStatus.completed) {
           _controller.forward();
         }
       } else if (direction == ScrollDirection.forward) {
-        // 스크롤 올릴 때 하단바 visible
         if (_controller.status != AnimationStatus.reverse && _controller.status != AnimationStatus.dismissed) {
           _controller.reverse();
         }
       }
     });
+
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        if (doc.exists && doc.data()!.containsKey('name')) {
+          setState(() {
+            _userName = doc['name'];
+            _isLoadingName = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('이름 불러오기 실패: $e');
+      setState(() {
+        _userName = null;
+        _isLoadingName = false;
+      });
+    }
   }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
-    // 페이지 전환 시 스크롤 위치 초기화
     _scrollController.jumpTo(0);
   }
 
@@ -77,6 +102,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final bool isHomeTab = _selectedIndex == 0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -85,12 +112,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.pushReplacement(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(builder: (context) => const MyPageScreen()),
               );
             },
           )
@@ -98,12 +124,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       body: SingleChildScrollView(
         controller: _scrollController,
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: _pages[_selectedIndex],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isHomeTab)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _isLoadingName
+                    ? const CircularProgressIndicator()
+                    : (_userName != null
+                    ? Text(
+                  '${_userName!}님, 안녕하세요!',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                )
+                    : const SizedBox()),
+              ),
+            SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: _pages[_selectedIndex],
+            ),
+          ],
         ),
       ),
-
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
           splashColor: Colors.black.withOpacity(0.1),
