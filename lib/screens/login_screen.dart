@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 import 'signin_screen.dart';
 import 'home_screen.dart';
+import 'pwreset_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20.0),
 
-              // 비밀번호 입력 + 토글 아이콘
+              // 비밀번호 입력
               TextField(
                 controller: _passwordController,  // 컨트롤러 연결
                 obscureText: _obscurePassword,
@@ -104,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 10.0),
 
-              // 회원가입 버튼 → SignInScreen 이동
+              // 회원가입 버튼
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -113,6 +114,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
                 },
                 child: const Text('회원가입'),
+              ),
+
+              //비밀번호 재설정
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PwResetScreen()),
+                  );
+                },
+                child: const Text('비밀번호 찾기'),
               ),
             ],
           ),
