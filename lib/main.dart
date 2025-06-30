@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'screens/login_screen.dart';
-import 'firebase_options.dart';
-import 'screens/splash_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_screen.dart';
 
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 플러터 바인딩 초기화
-  await Firebase.initializeApp(); // 파이어베이스 초기화
-  runApp(const MyApp()); // 앱 실행
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+
+    // 토큰 유무로 로그인 상태 판단 (필요하면 서버 유효성 검사 추가)
+    setState(() {
+      _isLoggedIn = token != null;
+      _isLoading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'PaEmotion',
       debugShowCheckedModeBanner: false,
@@ -59,20 +87,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasData) {
-            return const HomeScreen(); // 이미 로그인됨
-          } else {
-            return const LoginScreen(); // 로그인 안됨
-          }
-        },
-      ),
+      home: _isLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+
+import '../api/api_client.dart';
 import 'signinsuccess_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -16,89 +18,79 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  // 1) 회원가입 함수
+  bool _hasEnglish(String input) => RegExp(r'[A-Za-z]').hasMatch(input);
+  bool _hasDigit(String input) => RegExp(r'\d').hasMatch(input);
+  bool _hasSpecialChar(String input) => RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
+  bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
+
   Future<void> _signUp() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final name = _nicknameController.text.trim();
+    if (!_formKey.currentState!.validate()) return;
 
-        // 이메일/비밀번호 회원가입
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-
-        // Firebase Auth의 displayName 업데이트
-        await userCredential.user!.updateDisplayName(name);
-
-        // Firestore에 사용자 정보 저장
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
+    try {
+      final response = await ApiClient.dio.post(
+        '/users/signup',
+        data: {
           'email': _emailController.text.trim(),
-          'name': name,
-          'createdAt': Timestamp.now(),
-        });
+          'password': _passwordController.text.trim(),
+          'name': _nameController.text.trim(),
+          'nickname': _nicknameController.text.trim(),
+        },
+      );
 
-        // 가입 완료 후 화면 이동
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원가입 완료!')),
+          const SnackBar(content: Text('회원가입 성공!')),
         );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const SignInSuccessScreen()),
         );
-      } on FirebaseAuthException catch (e) {
-        print('FirebaseAuthException code: ${e.code}');
-        String message = '회원가입 실패';
-        if (e.code == 'weak-password') {
-          message = '비밀번호가 너무 약합니다.';
-        } else if (e.code == 'email-already-in-use') {
-          message = '이미 가입된 이메일입니다.';
-        }
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+          const SnackBar(content: Text('이미 존재하는 이메일입니다.')),
         );
-      } catch (e) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('에러 발생: $e')),
+          SnackBar(content: Text('에러: ${e.message}')),
         );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('요청 실패: $e')),
+      );
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('회원가입')),
-      resizeToAvoidBottomInset: true,
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(40.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 이메일
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: '이메일',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: '이메일', border: OutlineInputBorder()),
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) =>
-                value != null && value.contains('@') ? null : '올바른 이메일을 입력하세요',
+                validator: (value) {
+                  if (value == null || value.isEmpty) return '이메일을 입력하세요';
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    return '유효한 이메일 형식이 아닙니다';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
@@ -110,9 +102,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   labelText: '비밀번호',
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    ),
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _obscurePassword = !_obscurePassword;
@@ -120,8 +110,14 @@ class _SignInScreenState extends State<SignInScreen> {
                     },
                   ),
                 ),
-                validator: (value) =>
-                value != null && value.length >= 6 ? null : '비밀번호는 6자 이상이어야 합니다',
+                validator: (value) {
+                  if (value == null || value.isEmpty) return '비밀번호를 입력하세요';
+                  if (value.length < 8) return '8자 이상이어야 합니다';
+                  if (!_hasEnglish(value)) return '영문자를 포함해야 합니다';
+                  if (!_hasDigit(value)) return '숫자를 포함해야 합니다';
+                  if (!_hasSpecialChar(value)) return '특수문자를 포함해야 합니다';
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
@@ -133,9 +129,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   labelText: '비밀번호 확인',
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                    ),
+                    icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility),
                     onPressed: () {
                       setState(() {
                         _obscureConfirmPassword = !_obscureConfirmPassword;
@@ -143,30 +137,41 @@ class _SignInScreenState extends State<SignInScreen> {
                     },
                   ),
                 ),
-                validator: (value) =>
-                value == _passwordController.text ? null : '비밀번호가 일치하지 않습니다',
+                validator: (value) {
+                  if (value != _passwordController.text) return '비밀번호가 일치하지 않습니다';
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
-
               // 이름
               TextFormField(
-                controller: _nicknameController, // controller는 그대로 써도 돼
-                decoration: const InputDecoration(
-                  labelText: '이름',
-                  border: OutlineInputBorder(),
-                ),
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: '이름', border: OutlineInputBorder()),
                 validator: (value) {
                   if (value == null || value.isEmpty) return '이름을 입력하세요';
-                  if (value.length > 6) return '이름은 6자 이하로 입력해주세요';
+                  if (value.length < 1 || value.length > 7) return '이름은 1자 이상 7자 이하입니다';
+                  if (!_hasNoWhitespace(value)) return '띄어쓰기는 사용할 수 없습니다';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // 닉네임
+              TextFormField(
+                controller: _nicknameController,
+                decoration: const InputDecoration(labelText: '닉네임', border: OutlineInputBorder()),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return '닉네임을 입력하세요';
+                  if (value.length < 1 || value.length > 7) return '닉네임은 1자 이상 7자 이하입니다';
+                  if (!_hasNoWhitespace(value)) return '띄어쓰기는 사용할 수 없습니다';
                   return null;
                 },
               ),
               const SizedBox(height: 30),
 
-              // 회원가입 버튼
               ElevatedButton(
-                onPressed: _signUp, // 여기에 함수 연결
+                onPressed: _signUp,
                 child: const Text('회원가입'),
               ),
             ],
