@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/rendering.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
 import 'aichat_screen.dart';
@@ -69,24 +69,47 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<void> _loadUserName() async {
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        if (doc.exists && doc.data()!.containsKey('name')) {
-          setState(() {
-            _userName = doc['name'];
-            _isLoadingName = false;
-          });
-        }
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+
+      if (token == null) {
+        setState(() {
+          _userName = null;
+          _isLoadingName = false;
+        });
+        return;
+      }
+
+      final dio = Dio();
+      final response = await dio.get(
+        'http://localhost:8080/users/me',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        setState(() {
+          _userName = data['name'];
+          _isLoadingName = false;
+        });
+      } else {
+        print('API 응답 오류: ${response.statusCode}');
+        setState(() {
+          _userName = null;
+          _isLoadingName = false;
+        });
       }
     } catch (e) {
-      print('이름 불러오기 실패: $e');
+      print('사용자 정보 로딩 실패: $e');
       setState(() {
         _userName = null;
         _isLoadingName = false;
       });
     }
   }
+
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
