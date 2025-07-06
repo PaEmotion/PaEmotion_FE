@@ -44,6 +44,19 @@ class RecordStorage {
     }
   }
 
+  // 소비한 총액 계산
+  static Future<int> getMonthlySpending(String yearMonth) async {
+    final records = await loadRecords();
+    final filtered = records.where((record) => record.date.startsWith(yearMonth));
+    int total = 0;
+    for (final record in filtered) {
+      total += record.amount;
+    }
+    return total;
+  }
+
+
+
   // 삭제하기 (id 기준)
   static Future<void> deleteRecord(String id) async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,3 +71,4 @@ class RecordStorage {
   }
 
 }
+

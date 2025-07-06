@@ -43,7 +43,7 @@ class _SignInScreenState extends State<SignInScreen> {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 성공!')),
         );
@@ -52,6 +52,7 @@ class _SignInScreenState extends State<SignInScreen> {
           MaterialPageRoute(builder: (context) => const SignInSuccessScreen()),
         );
       }
+
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -46,6 +46,10 @@ dependencies:
   #chart
   fl_chart: ^0.66.0
   intl: ^0.18.0
+  percent_indicator: ^4.2.2
+
+  #uuid
+  uuid: ^4.0.0
 
 dev_dependencies:
   build_runner: ^2.4.6

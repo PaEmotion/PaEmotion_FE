@@ -24,7 +24,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   String? _error;
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://your-api.com',
+    baseUrl: 'http://172.30.1.90:8000',
     headers: {
       'Content-Type': 'application/json',
     },
