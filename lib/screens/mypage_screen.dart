@@ -105,7 +105,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
-    // 필요하면 refresh_token 등도 삭제
+
 
     if (!mounted) return;
 
@@ -162,8 +162,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
               '안녕하세요, ${_name ?? '사용자'}님!',
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            Text('닉네임: ${_nickname ?? '-'}', style: const TextStyle(fontSize: 18)),
-            Text('이메일: ${_email ?? '-'}', style: const TextStyle(fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 30),
 
             Text('개인정보', style: Theme.of(context).textTheme.titleMedium),

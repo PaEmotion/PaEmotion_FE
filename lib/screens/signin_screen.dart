@@ -24,13 +24,92 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  bool _isEmailVerified = false; // 이메일 인증 여부
+
   bool _hasEnglish(String input) => RegExp(r'[A-Za-z]').hasMatch(input);
   bool _hasDigit(String input) => RegExp(r'\d').hasMatch(input);
   bool _hasSpecialChar(String input) => RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
   bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
 
+  // 이메일 인증 요청 함수 (백엔드 링크 받고 수정 필요)
+  Future<void> _verifyEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이메일을 입력하세요')),
+      );
+      return;
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('유효한 이메일 형식이 아닙니다')),
+      );
+      return;
+    }
+
+    try {
+      final response = await ApiClient.dio.post('/users/send-verification-email', data: {
+        'email': email,
+      });
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('인증 메일이 발송되었습니다. 이메일을 확인하세요')),
+        );
+        setState(() {
+          _isEmailVerified = false; // 인증 전 상태로 유지
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('인증 요청 실패: ${response.statusMessage}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('인증 요청 중 오류 발생: $e')),
+      );
+    }
+  }
+
+  // 이메일 인증 상태 확인 함수 (백엔드 링크 받고 수정 필요)
+  Future<void> _checkEmailVerification() async {
+    final email = _emailController.text.trim();
+    try {
+      final response = await ApiClient.dio.get('/users/check-email-verification', queryParameters: {
+        'email': email,
+      });
+
+      if (response.statusCode == 200 && response.data['verified'] == true) {
+        setState(() {
+          _isEmailVerified = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이메일 인증이 완료되었습니다.')),
+        );
+      } else {
+        setState(() {
+          _isEmailVerified = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이메일 인증이 아직 완료되지 않았습니다.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('인증 상태 확인 중 오류 발생: $e')),
+      );
+    }
+  }
+
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_isEmailVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이메일 인증을 먼저 완료하세요')),
+      );
+      return;
+    }
 
     try {
       final response = await ApiClient.dio.post(
@@ -43,7 +122,7 @@ class _SignInScreenState extends State<SignInScreen> {
         },
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 성공!')),
         );
@@ -52,7 +131,6 @@ class _SignInScreenState extends State<SignInScreen> {
           MaterialPageRoute(builder: (context) => const SignInSuccessScreen()),
         );
       }
-
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -80,22 +158,66 @@ class _SignInScreenState extends State<SignInScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // 이메일
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: '이메일', border: OutlineInputBorder()),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return '이메일을 입력하세요';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return '유효한 이메일 형식이 아닙니다';
-                  }
-                  return null;
-                },
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(labelText: '이메일', border: OutlineInputBorder()),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return '이메일을 입력하세요';
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            return '유효한 이메일 형식이 아닙니다';
+                          }
+                          return null;
+                        },
+                        onChanged: (val) {
+                          setState(() {
+                            _isEmailVerified = false; // 이메일 변경 시 인증 초기화
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: double.infinity, // 부모 높이에 꽉차게
+                      child: ElevatedButton(
+                        onPressed: _verifyEmail,
+                        child: const Text('인증하기'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(70, 48), // 필요에 따라 조절 가능
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Icon(
+                    _isEmailVerified ? Icons.check_circle : Icons.error,
+                    color: _isEmailVerified ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(_isEmailVerified ? '인증 완료' : '인증 필요'),
+                  const SizedBox(width: 20),
+                  if (!_isEmailVerified)
+                    TextButton(
+                      onPressed: _checkEmailVerification,
+                      child: const Text('인증 상태 확인'),
+                    ),
+                ],
+              ),
+
               const SizedBox(height: 20),
 
-              // 비밀번호
+              // 이하 기존 비밀번호, 이름, 닉네임 폼 필드들...
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -120,9 +242,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   return null;
                 },
               ),
+
               const SizedBox(height: 20),
 
-              // 비밀번호 확인
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: _obscureConfirmPassword,
@@ -143,9 +265,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   return null;
                 },
               ),
+
               const SizedBox(height: 20),
 
-              // 이름
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: '이름', border: OutlineInputBorder()),
@@ -156,9 +278,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   return null;
                 },
               ),
+
               const SizedBox(height: 20),
 
-              // 닉네임
               TextFormField(
                 controller: _nicknameController,
                 decoration: const InputDecoration(labelText: '닉네임', border: OutlineInputBorder()),
@@ -169,11 +291,16 @@ class _SignInScreenState extends State<SignInScreen> {
                   return null;
                 },
               ),
+
               const SizedBox(height: 30),
 
-              ElevatedButton(
-                onPressed: _signUp,
-                child: const Text('회원가입'),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _signUp,
+                  child: const Text('회원가입'),
+                ),
               ),
             ],
           ),
