@@ -1,5 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+
+import '../models/record.dart';
+import '../utils/record_storage.dart';
+
+final Map<String, Color> categoryColors = {
+  '쇼핑': Colors.purple[300]!,
+  '배달음식': Colors.orange[400]!,
+  '외식': Colors.deepOrange[400]!,
+  '카페': Colors.brown[400]!,
+  '취미': Colors.teal[300]!,
+  '뷰티': Colors.pink[300]!,
+  '건강': Colors.green[400]!,
+  '자기계발': Colors.blue[300]!,
+  '선물': Colors.amber[300]!,
+  '여행': Colors.cyan[300]!,
+  '모임': Colors.indigo[300]!,
+};
+
+final Map<String, Color> emotionColors = {
+  '행복': Colors.amberAccent,
+  '사랑': Colors.pinkAccent,
+  '기대감': Colors.lightBlueAccent,
+  '기회감': Colors.lightGreen,
+  '슬픔': Colors.blueGrey,
+  '우울': Colors.indigo,
+  '분노': Colors.redAccent,
+  '스트레스': Colors.deepPurpleAccent,
+  '피로': Colors.brown,
+  '불안': Colors.grey,
+  '무료함': Colors.black26,
+  '외로움': Colors.deepPurple,
+};
 
 class MonthlyReportScreen extends StatefulWidget {
   const MonthlyReportScreen({super.key});
@@ -9,37 +42,164 @@ class MonthlyReportScreen extends StatefulWidget {
 }
 
 class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
-  final List<String> availableMonths = [
-    // 임시 더미 데이터
-    '2025-01',
-    '2025-02',
-    '2025-03',
-  ];
-
-  late int currentPageIndex;
-  PageController? _pageController;
+  List<Record> _allRecords = [];
+  List<String> _availableMonths = [];
+  String? _selectedMonth;
+  late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-
-    final now = DateTime.now();
-    final defaultMonth = DateTime(now.year, now.month - 1);
-    final defaultMonthStr =
-        '${defaultMonth.year.toString().padLeft(4, '0')}-${defaultMonth.month.toString().padLeft(2, '0')}';
-
-    currentPageIndex = availableMonths.indexOf(defaultMonthStr);
-    if (currentPageIndex == -1) {
-      currentPageIndex = availableMonths.length - 1;
-    }
-
-    _pageController = PageController(initialPage: currentPageIndex); // 초기화
+    _pageController = PageController(initialPage: 0);
+    _loadRecords();
   }
 
   @override
   void dispose() {
-    _pageController?.dispose();
+    _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecords() async {
+    final records = await RecordStorage.loadRecords();
+    final now = DateTime.now();
+    final currentMonthStr = DateFormat('yyyy-MM').format(DateTime(now.year, now.month));
+
+    final allMonths = records.map((r) {
+      final dt = DateTime.parse(r.date);
+      return DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
+    }).toSet().toList()
+      ..sort();
+
+    final filteredMonths = allMonths.where((m) => m != currentMonthStr).toList();
+    final lastPageIndex = filteredMonths.isNotEmpty ? filteredMonths.length - 1 : 0;
+
+    setState(() {
+      _allRecords = records;
+      _availableMonths = filteredMonths;
+      _selectedMonth = filteredMonths.isNotEmpty ? filteredMonths.last : null;
+      _pageController.dispose();
+      _pageController = PageController(initialPage: lastPageIndex);
+    });
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _selectedMonth = _availableMonths[index];
+    });
+  }
+
+  void _onDropdownChanged(String? newMonth) {
+    if (newMonth == null) return;
+    final newIndex = _availableMonths.indexOf(newMonth);
+    if (newIndex != -1) {
+      _pageController.animateToPage(
+        newIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      setState(() {
+        _selectedMonth = newMonth;
+      });
+    }
+  }
+
+  List<Record> _recordsForMonth(String month) {
+    return _allRecords.where((r) {
+      final dt = DateTime.parse(r.date);
+      final recordMonth = DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
+      return recordMonth == month;
+    }).toList();
+  }
+
+  Map<String, int> _getCategoryTotals(List<Record> records) {
+    final map = <String, int>{};
+    for (var r in records) {
+      map[r.category] = (map[r.category] ?? 0) + r.amount;
+    }
+    return map;
+  }
+
+  Map<String, int> _getEmotionCounts(List<Record> records) {
+    final map = <String, int>{};
+    for (var r in records) {
+      map[r.emotion] = (map[r.emotion] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  List<PieChartSectionData> _buildPieSections(Map<String, int> dataMap, Map<String, Color> colorMap) {
+    final total = dataMap.values.fold(0, (a, b) => a + b);
+    if (total == 0) return [];
+    return dataMap.entries.map((entry) {
+      final color = colorMap[entry.key] ?? Colors.grey;
+      return PieChartSectionData(
+        value: entry.value.toDouble(),
+        color: color,
+        radius: 40,
+        title: '',
+      );
+    }).toList();
+  }
+
+  Widget _buildDetailList(String title, Map<String, int> dataMap, Map<String, Color> colorMap) {
+    final totalSum = dataMap.values.fold(0, (a, b) => a + b).toDouble();
+    final entries = dataMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        LayoutBuilder(builder: (context, constraints) {
+          final itemWidth = (constraints.maxWidth - 16) / 2;
+          return Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: entries.map((entry) {
+              final color = colorMap[entry.key] ?? Colors.grey;
+              final percent = totalSum > 0 ? (entry.value / totalSum) * 100 : 0;
+
+              return Container(
+                width: itemWidth,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Container(width: 10, height: 10, color: color),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              entry.key,
+                              style: const TextStyle(fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${percent.toStringAsFixed(1)}%',
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }),
+      ],
+    );
   }
 
   @override
@@ -47,59 +207,112 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          '월간 리포트',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('월간 리포트', style: TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: _availableMonths.isEmpty
+          ? const Center(child: Text('이전 달의 소비 기록이 없습니다.'))
+          : Column(
         children: [
           Padding(
-            padding:
-            const EdgeInsets.only(left: 20, right: 16, top: 12, bottom: 8),
+            padding: const EdgeInsets.all(16),
             child: DropdownButton<String>(
-              value: availableMonths[currentPageIndex],
-              isExpanded: false,
-              items: availableMonths.map((month) {
+              isExpanded: true,
+              value: _selectedMonth,
+              items: _availableMonths.map((month) {
+                final dt = DateFormat('yyyy-MM').parse(month);
+                final formatted = DateFormat('yyyy년 M월').format(dt);
                 return DropdownMenuItem<String>(
                   value: month,
-                  child: Text(
-                    '$month 리포트',
-                    style: const TextStyle(fontSize: 16),
-                  ),
+                  child: Text('$formatted 리포트'),
                 );
               }).toList(),
-              onChanged: (selected) {
-                if (selected == null) return;
-                final newIndex = availableMonths.indexOf(selected);
-                if (newIndex != -1) {
-                  setState(() {
-                    currentPageIndex = newIndex;
-                  });
-                  _pageController?.jumpToPage(newIndex);
-                }
-              },
+              onChanged: _onDropdownChanged,
             ),
           ),
-
-          // 리포트 페이지 뷰
           Expanded(
             child: PageView.builder(
               controller: _pageController,
-              itemCount: availableMonths.length,
-              onPageChanged: (index) {
-                setState(() {
-                  currentPageIndex = index;
-                });
-              },
+              itemCount: _availableMonths.length,
+              reverse: false,
+              onPageChanged: _onPageChanged,
               itemBuilder: (context, index) {
-                final month = availableMonths[index];
-                return MonthlyReportPage(month: month);
+                final month = _availableMonths[index];
+                final records = _recordsForMonth(month);
+                final categoryData = _getCategoryTotals(records);
+                final emotionData = _getEmotionCounts(records);
+
+                final dt = DateFormat('yyyy-MM').parse(month);
+                final formattedMonth = DateFormat('yyyy년 M월').format(dt);
+
+                final firstDay = DateTime(dt.year, dt.month, 1);
+                final lastDay = DateTime(dt.year, dt.month + 1, 0);
+                final formattedRange = '${DateFormat('yyyy.MM.dd').format(firstDay)} ~ ${DateFormat('yyyy.MM.dd').format(lastDay)}';
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$formattedMonth 소비 리포트',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formattedRange,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          height: 200,
+                          child: categoryData.isEmpty
+                              ? const Center(child: Text('데이터 없음'))
+                              : PieChart(
+                            PieChartData(
+                              sections: _buildPieSections(categoryData, categoryColors),
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 60,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDetailList('카테고리별 소비 내역', categoryData, categoryColors),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          height: 200,
+                          child: emotionData.isEmpty
+                              ? const Center(child: Text('데이터 없음'))
+                              : PieChart(
+                            PieChartData(
+                              sections: _buildPieSections(emotionData, emotionColors),
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 60,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDetailList('감정별 소비 내역', emotionData, emotionColors),
+                      ],
+                    ),
+                  ),
+                );
               },
             ),
           ),
@@ -109,68 +322,6 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   }
 }
 
-class MonthlyReportPage extends StatelessWidget {
-  final String month;
-  const MonthlyReportPage({super.key, required this.month});
 
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$month 소비 리포트',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 200,
-              child: PieChart(
-                PieChartData(
-                  sections: [
-                    PieChartSectionData(
-                      value: 40,
-                      color: Colors.blue,
-                      title: '식비',
-                    ),
-                    PieChartSectionData(
-                      value: 30,
-                      color: Colors.orange,
-                      title: '쇼핑',
-                    ),
-                    PieChartSectionData(
-                      value: 20,
-                      color: Colors.green,
-                      title: '교통',
-                    ),
-                    PieChartSectionData(
-                      value: 10,
-                      color: Colors.red,
-                      title: '기타',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            // 임시 더미 데이터
-            const Text(
-              '이번 달에는 식비 지출이 전체의 40%를 차지했습니다.\n'
-                  'AI는 스트레스 해소를 위한 과소비 가능성을 지적했습니다.\n'
-                  '다음 달에는 소비 습관을 조정해보세요.',
-              style: TextStyle(fontSize: 16, height: 1.6),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+
+
