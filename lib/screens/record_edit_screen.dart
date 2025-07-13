@@ -20,21 +20,29 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   late TextEditingController _amountController;
   late String _selectedEmotion;
 
+  late bool _isToday;
+
   final List<String> _categories = [
-    '식비', '교통', '쇼핑', '기타', '외식', '배달음식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행'
+    '식비', '교통', '쇼핑', '기타', '외식', '배달음식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
   ];
 
   final List<String> _emotions = [
-    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '자기연민'
+    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감'
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.record.category;
-    _itemController = TextEditingController(text: widget.record.item);
-    _amountController = TextEditingController(text: widget.record.amount.toInt().toString());
+    _itemController = TextEditingController(text: widget.record.spendItem);
+    _amountController = TextEditingController(text: widget.record.spendCost.toString());
     _selectedEmotion = widget.record.emotion;
+
+    final recordDate = DateTime.parse(widget.record.spendDate);
+    final now = DateTime.now();
+    _isToday = recordDate.year == now.year &&
+        recordDate.month == now.month &&
+        recordDate.day == now.day;
   }
 
   @override
@@ -47,18 +55,15 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   Future<void> _saveRecord() async {
     if (_formKey.currentState!.validate()) {
       final updatedRecord = Record(
-        id: widget.record.id,
-        date: widget.record.date,
+        spendId: widget.record.spendId,
+        spendDate: widget.record.spendDate,
         category: _selectedCategory,
-        item: _itemController.text.trim(),
-        amount: int.parse(_amountController.text),
+        spendItem: _itemController.text.trim(),
+        spendCost: int.parse(_amountController.text),
         emotion: _selectedEmotion,
       );
 
-      // 저장
       await RecordStorage.updateRecord(updatedRecord);
-
-      // 저장 성공 후 이전 화면으로 true 반환
       Navigator.pop(context, true);
     }
   }
@@ -83,13 +88,15 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
 
     if (shouldDelete == true) {
-      await RecordStorage.deleteRecord(widget.record.id);
-      Navigator.pop(context, true); // 삭제 성공 시 true 반환
+      await RecordStorage.deleteRecord(widget.record.spendId);
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final recordDateStr = DateFormat('yyyy년 M월 d일').format(DateTime.parse(widget.record.spendDate));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('소비 기록 수정하기'),
@@ -100,6 +107,19 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              Text('기록 일자: $recordDateStr',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+
+              if (!_isToday)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12, bottom: 4),
+                  child: Text(
+                    '※ 과거 기록은 수정하거나 삭제할 수 없습니다.',
+                    style: TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
@@ -109,19 +129,18 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                 items: _categories
                     .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
                     .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedCategory = value;
-                    });
-                  }
-                },
+                onChanged: _isToday
+                    ? (value) => setState(() {
+                  if (value != null) _selectedCategory = value;
+                })
+                    : null,
                 validator: (value) =>
                 value == null || value.isEmpty ? '카테고리를 선택해주세요.' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _itemController,
+                enabled: _isToday,
                 decoration: const InputDecoration(
                   labelText: '품목 이름',
                   border: OutlineInputBorder(),
@@ -132,6 +151,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
+                enabled: _isToday,
                 decoration: const InputDecoration(
                   labelText: '금액',
                   border: OutlineInputBorder(),
@@ -154,20 +174,18 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                 items: _emotions
                     .map((emotion) => DropdownMenuItem(value: emotion, child: Text(emotion)))
                     .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedEmotion = value;
-                    });
-                  }
-                },
+                onChanged: _isToday
+                    ? (value) => setState(() {
+                  if (value != null) _selectedEmotion = value;
+                })
+                    : null,
                 validator: (value) =>
                 value == null || value.isEmpty ? '감정을 선택해주세요.' : null,
               ),
               const SizedBox(height: 32),
 
               ElevatedButton(
-                onPressed: _saveRecord,
+                onPressed: _isToday ? _saveRecord : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -183,7 +201,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
               const SizedBox(height: 16),
 
               OutlinedButton(
-                onPressed: _confirmDelete,
+                onPressed: _isToday ? _confirmDelete : null,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.red),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -201,3 +219,6 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
   }
 }
+
+
+
