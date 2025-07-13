@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     final todayRecords = allRecords.where((record) {
-      final recordDate = DateFormat('yyyy-MM-dd').format(DateTime.parse(record.date));
+      final recordDate = DateFormat('yyyy-MM-dd').format(DateTime.parse(record.spendDate));
       return recordDate == today;
     }).toList();
 
@@ -151,8 +151,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     for (var record in _todaysRecords) {
       categoryTotals.update(
         record.category,
-            (value) => value + record.amount.toDouble(),
-        ifAbsent: () => record.amount.toDouble(),
+            (value) => value + record.spendCost.toDouble(),
+        ifAbsent: () => record.spendCost.toDouble(),
       );
     }
 
@@ -201,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       groupedRecords.putIfAbsent(record.category, () => []).add(record);
     }
 
-    final int totalAmount = _todaysRecords.fold(0, (sum, r) => sum + r.amount);
+    final int totalAmount = _todaysRecords.fold(0, (sum, r) => sum + r.spendCost);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ...groupedRecords.entries.map((entry) {
             final category = entry.key;
             final records = entry.value;
-            final categoryTotal = records.fold(0.0, (sum, r) => sum + r.amount);
+            final categoryTotal = records.fold(0.0, (sum, r) => sum + r.spendCost);
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
               child: Container(
@@ -289,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 6),
                     ...records.map((record) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text('${record.item} ${numberFormat.format(record.amount)}원',
+                      child: Text('${record.spendItem} ${numberFormat.format(record.spendCost)}원',
                           style: const TextStyle(fontSize: 14)),
                     )),
                     const SizedBox(height: 6),

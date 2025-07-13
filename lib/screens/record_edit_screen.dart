@@ -21,19 +21,19 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   late String _selectedEmotion;
 
   final List<String> _categories = [
-    '식비', '교통', '쇼핑', '기타', '외식', '배달음식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행'
+    '식비', '교통', '쇼핑', '기타', '외식', '배달음식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
   ];
 
   final List<String> _emotions = [
-    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '자기연민'
+    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감'
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.record.category;
-    _itemController = TextEditingController(text: widget.record.item);
-    _amountController = TextEditingController(text: widget.record.amount.toInt().toString());
+    _itemController = TextEditingController(text: widget.record.spendItem);
+    _amountController = TextEditingController(text: widget.record.spendCost.toInt().toString());
     _selectedEmotion = widget.record.emotion;
   }
 
@@ -47,18 +47,18 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   Future<void> _saveRecord() async {
     if (_formKey.currentState!.validate()) {
       final updatedRecord = Record(
-        id: widget.record.id,
-        date: widget.record.date,
+        spendId: widget.record.spendId,
+        spendDate: widget.record.spendDate,
         category: _selectedCategory,
-        item: _itemController.text.trim(),
-        amount: int.parse(_amountController.text),
+        spendItem: _itemController.text.trim(),
+        spendCost: int.parse(_amountController.text),
         emotion: _selectedEmotion,
       );
 
       // 저장
       await RecordStorage.updateRecord(updatedRecord);
 
-      // 저장 성공 후 이전 화면으로 true 반환
+      //true 반환
       Navigator.pop(context, true);
     }
   }
@@ -83,7 +83,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
 
     if (shouldDelete == true) {
-      await RecordStorage.deleteRecord(widget.record.id);
+      await RecordStorage.deleteRecord(widget.record.spendId);
       Navigator.pop(context, true); // 삭제 성공 시 true 반환
     }
   }
@@ -201,3 +201,4 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
   }
 }
+

@@ -1,7 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-
 import '../api/api_client.dart';
 import 'signinsuccess_screen.dart';
 
@@ -24,14 +22,14 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  bool _isEmailVerified = false; // 이메일 인증 여부
+  bool _isEmailVerified = false;
 
   bool _hasEnglish(String input) => RegExp(r'[A-Za-z]').hasMatch(input);
   bool _hasDigit(String input) => RegExp(r'\d').hasMatch(input);
   bool _hasSpecialChar(String input) => RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
   bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
 
-  // 이메일 인증 요청 함수 (백엔드 링크 받고 수정 필요)
+  // 이메일 인증 요청
   Future<void> _verifyEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -48,7 +46,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     try {
-      final response = await ApiClient.dio.post('/users/send-verification-email', data: {
+      final response = await ApiClient.dio.post('/request-email-verification', data: {
         'email': email,
       });
 
@@ -57,7 +55,7 @@ class _SignInScreenState extends State<SignInScreen> {
           const SnackBar(content: Text('인증 메일이 발송되었습니다. 이메일을 확인하세요')),
         );
         setState(() {
-          _isEmailVerified = false; // 인증 전 상태로 유지
+          _isEmailVerified = true; // 이메일 발송 완료 상태 (실제 인증은 링크 클릭으로 처리됨)
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,36 +69,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  // 이메일 인증 상태 확인 함수 (백엔드 링크 받고 수정 필요)
-  Future<void> _checkEmailVerification() async {
-    final email = _emailController.text.trim();
-    try {
-      final response = await ApiClient.dio.get('/users/check-email-verification', queryParameters: {
-        'email': email,
-      });
-
-      if (response.statusCode == 200 && response.data['verified'] == true) {
-        setState(() {
-          _isEmailVerified = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이메일 인증이 완료되었습니다.')),
-        );
-      } else {
-        setState(() {
-          _isEmailVerified = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이메일 인증이 아직 완료되지 않았습니다.')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('인증 상태 확인 중 오류 발생: $e')),
-      );
-    }
-  }
-
+  // 회원가입
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -122,6 +91,9 @@ class _SignInScreenState extends State<SignInScreen> {
         },
       );
 
+      print('== 서버 응답 상태 코드: ${response.statusCode} ==');
+      print('== 서버 응답 데이터: ${response.data} ==');
+
       if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 성공!')),
@@ -132,6 +104,11 @@ class _SignInScreenState extends State<SignInScreen> {
         );
       }
     } on DioException catch (e) {
+      print('== DioException 발생 ==');
+      print('상태 코드: ${e.response?.statusCode}');
+      print('응답 데이터: ${e.response?.data}');
+      print('오류 메시지: ${e.message}');
+
       if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('이미 존재하는 이메일입니다.')),
@@ -142,6 +119,9 @@ class _SignInScreenState extends State<SignInScreen> {
         );
       }
     } catch (e) {
+      print('== 기타 오류 발생 ==');
+      print('오류 내용: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('요청 실패: $e')),
       );
@@ -175,19 +155,19 @@ class _SignInScreenState extends State<SignInScreen> {
                         },
                         onChanged: (val) {
                           setState(() {
-                            _isEmailVerified = false; // 이메일 변경 시 인증 초기화
+                            _isEmailVerified = false;
                           });
                         },
                       ),
                     ),
                     const SizedBox(width: 10),
                     SizedBox(
-                      height: double.infinity, // 부모 높이에 꽉차게
+                      height: double.infinity,
                       child: ElevatedButton(
                         onPressed: _verifyEmail,
                         child: const Text('인증하기'),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(70, 48), // 필요에 따라 조절 가능
+                          minimumSize: const Size(70, 48),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                       ),
@@ -201,23 +181,16 @@ class _SignInScreenState extends State<SignInScreen> {
               Row(
                 children: [
                   Icon(
-                    _isEmailVerified ? Icons.check_circle : Icons.error,
-                    color: _isEmailVerified ? Colors.green : Colors.red,
+                    _isEmailVerified ? Icons.check_circle : Icons.email,
+                    color: _isEmailVerified ? Colors.green : Colors.grey,
                   ),
                   const SizedBox(width: 8),
-                  Text(_isEmailVerified ? '인증 완료' : '인증 필요'),
-                  const SizedBox(width: 20),
-                  if (!_isEmailVerified)
-                    TextButton(
-                      onPressed: _checkEmailVerification,
-                      child: const Text('인증 상태 확인'),
-                    ),
+                  Text(_isEmailVerified ? '인증 메일 발송 완료' : '이메일 인증 필요'),
                 ],
               ),
 
               const SizedBox(height: 20),
 
-              // 이하 기존 비밀번호, 이름, 닉네임 폼 필드들...
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -309,3 +282,4 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+
