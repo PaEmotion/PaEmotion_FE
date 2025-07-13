@@ -58,14 +58,19 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
   Future<void> _loadRecords() async {
     final records = await RecordStorage.loadRecords();
-    final dates = records
-        .map((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.date)))
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final filtered = records.where((r) {
+      final d = DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate));
+      return d != todayStr;
+    }).toList();
+    final dates = filtered
+        .map((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)))
         .toSet()
         .toList()
       ..sort();
 
     setState(() {
-      _allRecords = records;
+      _allRecords = filtered;
       _availableDates = dates;
       _availableDateSet = dates.toSet();
       _selectedDate = dates.isNotEmpty ? DateTime.parse(dates.last) : DateTime.now();
@@ -86,13 +91,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
   List<Record> _recordsForDate(DateTime date) {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    return _allRecords.where((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.date)) == dateStr).toList();
+    return _allRecords.where((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)) == dateStr).toList();
   }
 
   Map<String, int> _getCategoryTotals(List<Record> records) {
     final map = <String, int>{};
     for (var r in records) {
-      map[r.category] = (map[r.category] ?? 0) + r.amount;
+      map[r.category] = (map[r.category] ?? 0) + r.spendCost;
     }
     return map;
   }
@@ -282,43 +287,25 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                       ),
                       const SizedBox(height: 12),
                       _buildAllList('감정별 소비 내역', emotionData, emotionColors),
-                      const SizedBox(height: 32),
-                      Center(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black87,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RecordListScreen(selectedDate: selectedStr),
-                              ),
-                            );
-                            if (result == true) {
-                              await _loadRecords();
-                            }
-                          },
-                          icon: const Icon(Icons.edit),
-                          label: const Text('소비기록 수정', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
 
 
 

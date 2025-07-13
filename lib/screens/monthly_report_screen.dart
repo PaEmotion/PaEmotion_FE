@@ -66,7 +66,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final currentMonthStr = DateFormat('yyyy-MM').format(DateTime(now.year, now.month));
 
     final allMonths = records.map((r) {
-      final dt = DateTime.parse(r.date);
+      final dt = DateTime.parse(r.spendDate);
       return DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
     }).toSet().toList()
       ..sort();
@@ -106,7 +106,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
   List<Record> _recordsForMonth(String month) {
     return _allRecords.where((r) {
-      final dt = DateTime.parse(r.date);
+      final dt = DateTime.parse(r.spendDate);
       final recordMonth = DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
       return recordMonth == month;
     }).toList();
@@ -115,7 +115,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   Map<String, int> _getCategoryTotals(List<Record> records) {
     final map = <String, int>{};
     for (var r in records) {
-      map[r.category] = (map[r.category] ?? 0) + r.amount;
+      map[r.category] = (map[r.category] ?? 0) + r.spendCost;
     }
     return map;
   }
@@ -321,6 +321,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     );
   }
 }
+
+
+
 
 
 

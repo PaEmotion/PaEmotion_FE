@@ -28,7 +28,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
     final targetDate = widget.selectedDate ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     final filteredRecords = allRecords.where((record) {
-      final dt = DateTime.parse(record.date);
+      final dt = DateTime.parse(record.spendDate);
       final recordDateStr = DateFormat('yyyy-MM-dd').format(dt);
       return recordDateStr == targetDate;
     }).toList();
@@ -104,11 +104,11 @@ class _RecordListScreenState extends State<RecordListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${record.category} - ${record.item}',
+                              '${record.category} - ${record.spendItem}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              '${NumberFormat('#,###').format(record.amount.toInt())}원',
+                              '${NumberFormat('#,###').format(record.spendCost.toInt())}원',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],

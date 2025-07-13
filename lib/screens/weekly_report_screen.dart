@@ -62,7 +62,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     final weeksSet = <DateTime>{};
 
     for (final record in records) {
-      final date = DateTime.parse(record.date);
+      final date = DateTime.parse(record.spendDate);
       final monday = _mondayOfWeek(date);
       if (monday.isBefore(currentMonday)) {
         weeksSet.add(monday);
@@ -88,7 +88,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   List<Record> _recordsForWeek(DateTime weekStart) {
     final weekEnd = weekStart.add(const Duration(days: 7));
     return _allRecords.where((r) {
-      final date = DateTime.parse(r.date);
+      final date = DateTime.parse(r.spendDate);
       return !date.isBefore(weekStart) && date.isBefore(weekEnd);
     }).toList();
   }
@@ -96,7 +96,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   Map<String, int> _getCategoryTotals(List<Record> records) {
     final map = <String, int>{};
     for (var r in records) {
-      map[r.category] = (map[r.category] ?? 0) + r.amount;
+      map[r.category] = (map[r.category] ?? 0) + r.spendCost;
     }
     return map;
   }
@@ -339,4 +339,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 }
+
+
 

@@ -1,35 +1,35 @@
 class Record {
-  final String id;  // 고유 아이디 필드 추가
-  final String date;
+  final String spendId;
+  final String spendDate;
   final String category;
-  final String item;
-  final int amount;
+  final String spendItem;
+  final int spendCost;
   final String emotion;
 
   Record({
-    required this.id,
-    required this.date,
+    required this.spendId,
+    required this.spendDate,
     required this.category,
-    required this.item,
-    required this.amount,
+    required this.spendItem,
+    required this.spendCost,
     required this.emotion,
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'date': date,
+    'spendId': spendId,
+    'spendDate': spendDate,
     'category': category,
-    'item': item,
-    'amount': amount,
+    'spendItem': spendItem,
+    'spendCost': spendCost,
     'emotion': emotion,
   };
 
   factory Record.fromJson(Map<String, dynamic> json) => Record(
-    id: json['id'],
-    date: json['date'],
+    spendId: json['spendId'],
+    spendDate: json['spendDate'],
     category: json['category'],
-    item: json['item'],
-    amount: (json['amount'] as num).toInt(),
+    spendItem: json['spendItem'],
+    spendCost: (json['spendCost'] as num).toInt(),
     emotion: json['emotion'],
   );
 }
