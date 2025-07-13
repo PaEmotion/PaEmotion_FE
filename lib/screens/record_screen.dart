@@ -15,10 +15,6 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  DateTime _selectedDate = DateTime.now();
-  String? _selectedCategory;
-  String? _selectedEmotion;
-
   final TextEditingController _itemController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
 
@@ -29,6 +25,9 @@ class _RecordScreenState extends State<RecordScreen> {
   final List<String> _emotions = [
     '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감',
   ];
+
+  String? _selectedCategory;
+  String? _selectedEmotion;
 
   Future<void> _submitRecord() async {
     final spendItem = _itemController.text.trim();
@@ -44,7 +43,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
     final record = Record(
       spendId: const Uuid().v4(),
-      spendDate: _selectedDate.toIso8601String(),
+      spendDate: DateTime.now().toIso8601String(),
       category: _selectedCategory!,
       spendItem: spendItem,
       spendCost: spendCost,
@@ -82,6 +81,7 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   Widget build(BuildContext context) {
     final maxWidth = 400.0;
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     final inputDecoration = const InputDecoration(
       border: UnderlineInputBorder(),
@@ -98,26 +98,17 @@ class _RecordScreenState extends State<RecordScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
             child: ListView(
               children: [
-                _buildLabel('날짜를 선택해주세요'),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF1A1A1A),
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: Color(0xFF1A1A1A)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                _buildLabel('기록 일자'),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF1A1A1A)),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setState(() => _selectedDate = picked);
-                  },
-                  child: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
+                  child: Text(
+                    todayStr,
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
 
                 _buildLabel('무엇을 소비했나요?'),
@@ -187,6 +178,10 @@ class _RecordScreenState extends State<RecordScreen> {
     );
   }
 }
+
+
+
+
 
 
 
