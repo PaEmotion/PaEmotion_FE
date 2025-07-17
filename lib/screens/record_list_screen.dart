@@ -154,7 +154,3 @@ class _RecordListScreenState extends State<RecordListScreen> {
     );
   }
 }
-
-
-
-
