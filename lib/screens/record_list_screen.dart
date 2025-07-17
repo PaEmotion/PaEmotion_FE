@@ -4,6 +4,35 @@ import '../models/record.dart';
 import '../utils/record_storage.dart';
 import 'record_edit_screen.dart';
 
+const Map<int, String> emotionMap = {
+  1: '행복',
+  2: '사랑',
+  3: '기대감',
+  4: '슬픔',
+  5: '우울',
+  6: '분노',
+  7: '스트레스',
+  8: '피로',
+  9: '불안',
+  10: '무료함',
+  11: '외로움',
+  12: '기회감',
+};
+
+const Map<int, String> categoryMap = {
+  1: '쇼핑',
+  2: '배달음식',
+  3: '외식',
+  4: '카페',
+  5: '취미',
+  6: '뷰티',
+  7: '건강',
+  8: '자기계발',
+  9: '선물',
+  10: '여행',
+  11: '모임',
+};
+
 class RecordListScreen extends StatefulWidget {
   final String? selectedDate; // yyyy-MM-dd 형식, null이면 오늘 날짜
 
@@ -104,7 +133,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${record.category} - ${record.spendItem}',
+                              '${categoryMap[record.spend_category] ?? record.spend_category.toString()} - ${record.spendItem}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             Text(
@@ -125,6 +154,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
     );
   }
 }
+
 
 
 

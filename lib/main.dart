@@ -1,46 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'utils/user_manager.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 전역 유저 상태 초기화 (SharedPreferences에서 불러오기)
+  await UserManager().init();
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  bool _isLoggedIn = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginStatus();
-  }
-
-  Future<void> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
-
-    setState(() {
-      _isLoggedIn = token != null;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // 현재 로그인된 유저 여부 확인
+    final isLoggedIn = UserManager().isLoggedIn;
+
     return MaterialApp(
       title: 'PaEmotion',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system, // 시스템 다크/라이트 모드 따름
+      themeMode: ThemeMode.system,
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
@@ -111,7 +96,8 @@ class _MyAppState extends State<MyApp> {
         ),
         useMaterial3: true,
       ),
-      home: _isLoggedIn ? const HomeScreen() : const LoginScreen(),
+      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }
+
