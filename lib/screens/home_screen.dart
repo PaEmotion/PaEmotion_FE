@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart'; // 추후 사용 예정
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../models/record.dart';
-import '../utils/record_storage.dart';
+import 'login_screen.dart'; // sharedpreference에 저장된 정보를 쓰는 게 좋을 듯 하다
 import 'aichat_screen.dart';
 import 'report_screen.dart';
 import 'budget_screen.dart';
@@ -12,6 +13,22 @@ import 'challenge_screen.dart';
 import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
+import '../models/record.dart';
+import '../utils/record_storage.dart';
+
+final Map<int, String> categoryMap = {
+  1: '쇼핑',
+  2: '배달음식',
+  3: '외식',
+  4: '카페',
+  5: '취미',
+  6: '뷰티',
+  7: '건강',
+  8: '자기계발',
+  9: '선물',
+  10: '여행',
+  11: '모임',
+};
 
 final Map<String, Color> categoryColors = {
   '쇼핑': Colors.purple[300]!,
@@ -51,11 +68,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   List<Record> _todaysRecords = [];
+  String _username = '사용자님';
 
   @override
   void initState() {
     super.initState();
+    _loadUsername();
     _loadTodayRecords();
+  }
+
+  Future<void> _loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('username');
+    if (mounted) {
+      setState(() {
+        _username = (name == null || name.isEmpty) ? '사용자님' : name;
+      });
+    }
   }
 
   Future<void> _loadTodayRecords() async {
@@ -74,36 +103,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Color _getDominantEmotionColor(List<Record> records) {
-    final emotionCount = <String, int>{};
+    final emotionCount = <int, int>{};
     for (var r in records) {
-      emotionCount[r.emotion] = (emotionCount[r.emotion] ?? 0) + 1;
+      emotionCount[r.emotion_category] = (emotionCount[r.emotion_category] ?? 0) + 1;
     }
     final sorted = emotionCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    String dominant = (sorted.length >= 2 && sorted[0].value == sorted[1].value)
-        ? records.last.emotion
+    int dominant = (sorted.length >= 2 && sorted[0].value == sorted[1].value)
+        ? records.last.emotion_category
         : sorted.first.key;
-    return emotionColors[dominant]?.withOpacity(0.1) ?? Colors.grey[100]!;
+    return emotionColors[dominant]!.withOpacity(0.1);  // emotionColors는 Map<int, Color> 로 바꿔야 할 수도 있음
   }
 
   String _getTopCategory(List<Record> records) {
-    final totals = <String, int>{};
+    final totals = <int, int>{};
     for (var r in records) {
-      totals[r.category] = (totals[r.category] ?? 0) + r.spendCost;
+      totals[r.spend_category] = (totals[r.spend_category] ?? 0) + r.spendCost;
     }
     if (totals.isEmpty) return '';
     final sorted = totals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    return sorted.first.key;
+    return categoryMap[sorted.first.key] ?? '기타';
   }
 
   Widget _buildPieChartWithEmotionIcon() {
-    final categoryTotals = <String, double>{};
+    final categoryTotals = <int, double>{};
     for (var record in _todaysRecords) {
-      categoryTotals.update(record.category, (v) => v + record.spendCost, ifAbsent: () => record.spendCost.toDouble());
+      categoryTotals.update(record.spend_category, (v) => v + record.spendCost, ifAbsent: () => record.spendCost.toDouble());
     }
     final sections = categoryTotals.entries.map((entry) {
-      final color = categoryColors[entry.key] ?? Colors.grey;
+      final color = categoryColors[categoryMap[entry.key] ?? '기타'] ?? Colors.grey;
       return PieChartSectionData(
         color: color,
         value: entry.value,
@@ -141,8 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SizedBox(height: 25),
-        const Text('사용자님, 안녕하세요! 😊\n행운 가득한 하루 보내세요.',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        Text('$_username, 안녕하세요! 😊\n행운 가득한 하루 보내세요.',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
 
         if (_todaysRecords.isEmpty)
           const Padding(
@@ -200,9 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
 
           ..._todaysRecords.map((record) {
-            final emotion = record.emotion;
+            final emotion = record.emotion_category;
             final dotColor = emotionColors[emotion] ?? Colors.grey;
             final backgroundColor = (emotionColors[emotion] ?? Colors.grey).withOpacity(0.1);
+            final catName = categoryMap[record.spend_category] ?? '기타';
 
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
@@ -222,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('$emotion 소비', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ]),
                 const SizedBox(height: 6),
-                Text('${record.category} - ${record.spendItem}', style: const TextStyle(fontSize: 16)),
+                Text('$catName - ${record.spendItem}', style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 6),
                 Align(
                   alignment: Alignment.bottomRight,
@@ -295,7 +325,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
 
 
 

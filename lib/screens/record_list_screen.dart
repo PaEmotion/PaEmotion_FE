@@ -4,6 +4,35 @@ import '../models/record.dart';
 import '../utils/record_storage.dart';
 import 'record_edit_screen.dart';
 
+const Map<int, String> emotionMap = {
+  1: '행복',
+  2: '사랑',
+  3: '기대감',
+  4: '슬픔',
+  5: '우울',
+  6: '분노',
+  7: '스트레스',
+  8: '피로',
+  9: '불안',
+  10: '무료함',
+  11: '외로움',
+  12: '기회감',
+};
+
+const Map<int, String> categoryMap = {
+  1: '쇼핑',
+  2: '배달음식',
+  3: '외식',
+  4: '카페',
+  5: '취미',
+  6: '뷰티',
+  7: '건강',
+  8: '자기계발',
+  9: '선물',
+  10: '여행',
+  11: '모임',
+};
+
 class RecordListScreen extends StatefulWidget {
   final String? selectedDate; // yyyy-MM-dd 형식, null이면 오늘 날짜
 
@@ -28,7 +57,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
     final targetDate = widget.selectedDate ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     final filteredRecords = allRecords.where((record) {
-      final dt = DateTime.parse(record.date);
+      final dt = DateTime.parse(record.spendDate);
       final recordDateStr = DateFormat('yyyy-MM-dd').format(dt);
       return recordDateStr == targetDate;
     }).toList();
@@ -104,11 +133,11 @@ class _RecordListScreenState extends State<RecordListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${record.category} - ${record.item}',
+                              '${categoryMap[record.spend_category] ?? record.spend_category.toString()} - ${record.spendItem}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              '${NumberFormat('#,###').format(record.amount.toInt())}원',
+                              '${NumberFormat('#,###').format(record.spendCost.toInt())}원',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -125,4 +154,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
     );
   }
 }
+
+
+
 

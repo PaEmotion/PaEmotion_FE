@@ -3,8 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'recordsuccess_screen.dart';
 import 'package:uuid/uuid.dart';
+
+import 'recordsuccess_screen.dart';
 import '../models/record.dart';
 
 class RecordScreen extends StatefulWidget {
@@ -26,15 +27,21 @@ class _RecordScreenState extends State<RecordScreen> {
     '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감',
   ];
 
-  String? _selectedCategory;
-  String? _selectedEmotion;
+  int? _selectedCategoryIndex;
+  int? _selectedEmotionIndex;
 
   Future<void> _submitRecord() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId') ?? 'unknown_user';
+
     final spendItem = _itemController.text.trim();
     final amountStr = _amountController.text.trim();
     final spendCost = int.tryParse(amountStr) ?? 0;
 
-    if (_selectedCategory == null || spendItem.isEmpty || spendCost <= 0 || _selectedEmotion == null) {
+    if (_selectedCategoryIndex == null ||
+        spendItem.isEmpty ||
+        spendCost <= 0 ||
+        _selectedEmotionIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('모든 항목을 정확히 입력해주세요.')),
       );
@@ -42,15 +49,15 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     final record = Record(
-      spendId: const Uuid().v4(),
+      spendId: const Uuid().v4(), // 수정 필요
+      userId: userId,
       spendDate: DateTime.now().toIso8601String(),
-      category: _selectedCategory!,
+      spend_category: _selectedCategoryIndex!,
       spendItem: spendItem,
       spendCost: spendCost,
-      emotion: _selectedEmotion!,
+      emotion_category: _selectedEmotionIndex!,
     );
 
-    final prefs = await SharedPreferences.getInstance();
     final List<String> existingRecords = prefs.getStringList('records') ?? [];
     existingRecords.add(jsonEncode(record.toJson()));
     await prefs.setStringList('records', existingRecords);
@@ -112,15 +119,18 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
 
                 _buildLabel('무엇을 소비했나요?'),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<int>(
                   decoration: inputDecoration.copyWith(
                     hintText: '카테고리를 선택하세요',
                   ),
-                  value: _selectedCategory,
-                  items: _categories
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (val) => setState(() => _selectedCategory = val),
+                  value: _selectedCategoryIndex,
+                  items: List.generate(_categories.length, (index) {
+                    return DropdownMenuItem(
+                      value: index + 1,
+                      child: Text(_categories[index]),
+                    );
+                  }),
+                  onChanged: (val) => setState(() => _selectedCategoryIndex = val),
                 ),
 
                 _buildLabel('소비한 품목'),
@@ -142,15 +152,18 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
 
                 _buildLabel('어떤 감정이었나요?'),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<int>(
                   decoration: inputDecoration.copyWith(
                     hintText: '감정을 선택하세요',
                   ),
-                  value: _selectedEmotion,
-                  items: _emotions
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (val) => setState(() => _selectedEmotion = val),
+                  value: _selectedEmotionIndex,
+                  items: List.generate(_emotions.length, (index) {
+                    return DropdownMenuItem(
+                      value: index + 1,
+                      child: Text(_emotions[index]),
+                    );
+                  }),
+                  onChanged: (val) => setState(() => _selectedEmotionIndex = val),
                 ),
 
                 const SizedBox(height: 30),
@@ -178,6 +191,7 @@ class _RecordScreenState extends State<RecordScreen> {
     );
   }
 }
+
 
 
 

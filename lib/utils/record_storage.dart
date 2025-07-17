@@ -74,7 +74,7 @@ class RecordStorage {
   static Future<int> getCategorySpending(String yearMonth, String category) async {
     final records = await loadRecords();
     final filtered = records.where((record) =>
-    record.spendDate.startsWith(yearMonth) && record.category == category
+    record.spendDate.startsWith(yearMonth) && record.spend_category == category
     );
     int total = 0;
     for (final record in filtered) {

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // Firebase Auth import
-import 'signin_screen.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
+
 import 'home_screen.dart';
+import 'signin_screen.dart';
+import 'pwreset_screen.dart';
+import '../api/api_client.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,41 +18,50 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-
-  // 이메일, 비밀번호 컨트롤러 추가
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // 1) 로그인 함수.
   Future<void> _signIn() async {
-
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 성공!')),
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      final response = await ApiClient.dio.post(
+        '/users/login',
+        data: {
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text.trim(),
+        },
       );
 
-    } on FirebaseAuthException catch (e) {
-      String message = '로그인 실패';
-      if (e.code == 'user-not-found') {
-        message = '사용자를 찾을 수 없습니다.';
-      } else if (e.code == 'wrong-password') {
-        message = '비밀번호가 틀렸습니다.';
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        final user = User.fromJson(data);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(user.toJson()));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.name}님, 안녕하세요!')),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이메일 또는 비밀번호 오류')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('에러: ${e.message}')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('에러 발생: $e')),
+        SnackBar(content: Text('요청 실패: $e')),
       );
     }
   }
@@ -54,31 +69,26 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       appBar: AppBar(title: const Text('로그인')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(40.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              // 이메일 입력
+            children: [
               TextField(
-                controller: _emailController,  // 컨트롤러 연결
+                controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: '이메일을 입력하세요',
+                  labelText: '이메일',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 20.0),
-
-              // 비밀번호 입력 + 토글 아이콘
               TextField(
-                controller: _passwordController,  // 컨트롤러 연결
+                controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
-                  labelText: '비밀번호를 입력하세요',
+                  labelText: '비밀번호',
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -93,18 +103,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 30.0),
-
-              // 로그인 버튼
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _signIn,  // 로그인 함수 연결
+                  onPressed: _signIn,
                   child: const Text('로그인'),
                 ),
               ),
               const SizedBox(height: 10.0),
-
-              // 회원가입 버튼 → SignInScreen 이동
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -114,6 +120,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 child: const Text('회원가입'),
               ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PwResetScreen()),
+                  );
+                },
+                child: const Text('비밀번호 찾기'),
+              ),
             ],
           ),
         ),
@@ -121,3 +136,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
