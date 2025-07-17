@@ -3,6 +3,40 @@ import 'package:intl/intl.dart';
 import '../models/record.dart';
 import '../utils/record_storage.dart';
 
+// categoryMap 정의 (역으로도 쓰기 위해 Map<String, int> 생성)
+const Map<int, String> categoryMap = {
+  1: '쇼핑',
+  2: '배달음식',
+  3: '외식',
+  4: '카페',
+  5: '취미',
+  6: '뷰티',
+  7: '건강',
+  8: '자기계발',
+  9: '선물',
+  10: '여행',
+  11: '모임',
+};
+final Map<String, int> categoryReverseMap =
+categoryMap.map((key, value) => MapEntry(value, key));
+
+const Map<int, String> emotionMap = {
+  1: '행복',
+  2: '사랑',
+  3: '기대감',
+  4: '슬픔',
+  5: '우울',
+  6: '분노',
+  7: '스트레스',
+  8: '피로',
+  9: '불안',
+  10: '무료함',
+  11: '외로움',
+  12: '기회감',
+};
+final Map<String, int> emotionReverseMap =
+emotionMap.map((key, value) => MapEntry(value, key));
+
 class RecordEditScreen extends StatefulWidget {
   final Record record;
 
@@ -15,28 +49,31 @@ class RecordEditScreen extends StatefulWidget {
 class _RecordEditScreenState extends State<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  late String _selectedCategory;
+  late String _selectedCategory; // 문자열(예: '쇼핑')
   late TextEditingController _itemController;
   late TextEditingController _amountController;
   late String _selectedEmotion;
 
   late bool _isToday;
 
-  final List<String> _categories = [
-    '식비', '교통', '쇼핑', '기타', '외식', '배달음식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
-  ];
-
-  final List<String> _emotions = [
-    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감'
-  ];
+  late List<String> _categories;
+  late List<String> _emotions;
 
   @override
   void initState() {
     super.initState();
-    _selectedCategory = widget.record.category;
+
+    // category int → string
+    _selectedCategory = categoryMap[widget.record.spend_category] ?? '';
+
     _itemController = TextEditingController(text: widget.record.spendItem);
     _amountController = TextEditingController(text: widget.record.spendCost.toString());
-    _selectedEmotion = widget.record.emotion;
+
+    // emotion int → string
+    _selectedEmotion = emotionMap[widget.record.emotion_category] ?? '';
+
+    _categories = categoryMap.values.toList();
+    _emotions = emotionMap.values.toList();
 
     final recordDate = DateTime.parse(widget.record.spendDate);
     final now = DateTime.now();
@@ -54,13 +91,25 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
 
   Future<void> _saveRecord() async {
     if (_formKey.currentState!.validate()) {
+      // 선택된 문자열 → int로 변환
+      final selectedCategoryId = categoryReverseMap[_selectedCategory];
+      final selectedEmotionId = emotionReverseMap[_selectedEmotion];
+
+      if (selectedCategoryId == null || selectedEmotionId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('카테고리 또는 감정을 올바르게 선택해주세요.')),
+        );
+        return;
+      }
+
       final updatedRecord = Record(
         spendId: widget.record.spendId,
         spendDate: widget.record.spendDate,
-        category: _selectedCategory,
+        spend_category: selectedCategoryId,
         spendItem: _itemController.text.trim(),
         spendCost: int.parse(_amountController.text),
-        emotion: _selectedEmotion,
+        emotion_category: selectedEmotionId,
+        userId: widget.record.userId,
       );
 
       await RecordStorage.updateRecord(updatedRecord);
@@ -183,7 +232,6 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                 value == null || value.isEmpty ? '감정을 선택해주세요.' : null,
               ),
               const SizedBox(height: 32),
-
               ElevatedButton(
                 onPressed: _isToday ? _saveRecord : null,
                 style: ElevatedButton.styleFrom(
@@ -193,13 +241,10 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                 ),
                 child: const Text(
                   '수정하기',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               OutlinedButton(
                 onPressed: _isToday ? _confirmDelete : null,
                 style: OutlinedButton.styleFrom(
@@ -219,5 +264,4 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
   }
 }
-
 

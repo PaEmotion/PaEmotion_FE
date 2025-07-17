@@ -1,0 +1,202 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:uuid/uuid.dart';
+
+import 'recordsuccess_screen.dart';
+import '../models/record.dart';
+
+class RecordScreen extends StatefulWidget {
+  const RecordScreen({super.key});
+
+  @override
+  State<RecordScreen> createState() => _RecordScreenState();
+}
+
+class _RecordScreenState extends State<RecordScreen> {
+  final TextEditingController _itemController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+
+  final List<String> _categories = [
+    '쇼핑', '배달음식', '외식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
+  ];
+
+  final List<String> _emotions = [
+    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감',
+  ];
+
+  int? _selectedCategoryIndex;
+  int? _selectedEmotionIndex;
+
+  Future<void> _submitRecord() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId') ?? 'unknown_user';
+
+    final spendItem = _itemController.text.trim();
+    final amountStr = _amountController.text.trim();
+    final spendCost = int.tryParse(amountStr) ?? 0;
+
+    if (_selectedCategoryIndex == null ||
+        spendItem.isEmpty ||
+        spendCost <= 0 ||
+        _selectedEmotionIndex == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('모든 항목을 정확히 입력해주세요.')),
+      );
+      return;
+    }
+
+    final record = Record(
+      spendId: const Uuid().v4(), // 수정 필요
+      userId: userId,
+      spendDate: DateTime.now().toIso8601String(),
+      spend_category: _selectedCategoryIndex!,
+      spendItem: spendItem,
+      spendCost: spendCost,
+      emotion_category: _selectedEmotionIndex!,
+    );
+
+    final List<String> existingRecords = prefs.getStringList('records') ?? [];
+    existingRecords.add(jsonEncode(record.toJson()));
+    await prefs.setStringList('records', existingRecords);
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const RecordSuccessScreen()),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, top: 12),
+      child: Row(
+        children: [
+          const Text('•', style: TextStyle(fontSize: 20, color: Colors.black87)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = 400.0;
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    final inputDecoration = const InputDecoration(
+      border: UnderlineInputBorder(),
+      isDense: true,
+      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('소비기록 작성')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
+            child: ListView(
+              children: [
+                _buildLabel('기록 일자'),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF1A1A1A)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    todayStr,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+
+                _buildLabel('무엇을 소비했나요?'),
+                DropdownButtonFormField<int>(
+                  decoration: inputDecoration.copyWith(
+                    hintText: '카테고리를 선택하세요',
+                  ),
+                  value: _selectedCategoryIndex,
+                  items: List.generate(_categories.length, (index) {
+                    return DropdownMenuItem(
+                      value: index + 1,
+                      child: Text(_categories[index]),
+                    );
+                  }),
+                  onChanged: (val) => setState(() => _selectedCategoryIndex = val),
+                ),
+
+                _buildLabel('소비한 품목'),
+                TextField(
+                  controller: _itemController,
+                  decoration: inputDecoration.copyWith(
+                    hintText: '소비한 품목을 입력하세요',
+                  ),
+                ),
+
+                _buildLabel('금액을 적어주세요'),
+                TextField(
+                  controller: _amountController,
+                  decoration: inputDecoration.copyWith(
+                    hintText: '금액을 숫자로 입력하세요',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+
+                _buildLabel('어떤 감정이었나요?'),
+                DropdownButtonFormField<int>(
+                  decoration: inputDecoration.copyWith(
+                    hintText: '감정을 선택하세요',
+                  ),
+                  value: _selectedEmotionIndex,
+                  items: List.generate(_emotions.length, (index) {
+                    return DropdownMenuItem(
+                      value: index + 1,
+                      child: Text(_emotions[index]),
+                    );
+                  }),
+                  onChanged: (val) => setState(() => _selectedEmotionIndex = val),
+                ),
+
+                const SizedBox(height: 30),
+
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: _submitRecord,
+                  child: const Text(
+                    '작성 완료',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
