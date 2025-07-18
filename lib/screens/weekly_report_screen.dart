@@ -33,6 +33,14 @@ final Map<String, Color> emotionColors = {
   '무료함': Colors.black26,
   '외로움': Colors.deepPurple,
 };
+final List<String> allCategories = [
+  '쇼핑', '배달음식', '외식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
+];
+
+final List<String> allEmotions = [
+  '행복', '사랑', '기대감', '기회감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움'
+];
+
 
 class WeeklyReportScreen extends StatefulWidget {
   const WeeklyReportScreen({super.key});
@@ -96,7 +104,11 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   Map<String, int> _getCategoryTotals(List<Record> records) {
     final map = <String, int>{};
     for (var r in records) {
-      map[r.category] = (map[r.category] ?? 0) + r.spendCost;
+      final id = r.spend_category;
+      if (id > 0 && id <= allCategories.length) {
+        final name = allCategories[id - 1]; // id → 이름
+        map[name] = (map[name] ?? 0) + r.spendCost;
+      }
     }
     return map;
   }
@@ -104,10 +116,15 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   Map<String, int> _getEmotionCounts(List<Record> records) {
     final map = <String, int>{};
     for (var r in records) {
-      map[r.emotion] = (map[r.emotion] ?? 0) + 1;
+      final id = r.emotion_category;
+      if (id > 0 && id <= allEmotions.length) {
+        final name = allEmotions[id - 1]; // id → 이름
+        map[name] = (map[name] ?? 0) + 1;
+      }
     }
     return map;
   }
+
 
   List<PieChartSectionData> _buildPieSections(Map<String, int> dataMap, Map<String, Color> colorMap) {
     final total = dataMap.values.fold(0, (a, b) => a + b);
@@ -339,6 +356,4 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 }
-
-
 
