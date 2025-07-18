@@ -68,11 +68,12 @@ class _BudgetEditScreenState extends State<BudgetEditScreen> {
 
     final Map<String, int> totals = {};
     for (var record in records) {
-      final recordDate = DateTime.tryParse(record.spendDate);
-      if (recordDate != null &&
-          recordDate.year == DateTime.now().year &&
-          recordDate.month == DateTime.now().month - 1) {
-        totals[record.category] = (totals[record.category] ?? 0) + record.spendCost;
+      if (record.spendDate.startsWith(lastMonth)) {
+        final int categoryId = record.spend_category;
+        if (categoryId > 0 && categoryId <= allCategories.length) {
+          final String categoryName = allCategories[categoryId - 1];
+          totals[categoryName] = (totals[categoryName] ?? 0) + record.spendCost;
+        }
       }
     }
 

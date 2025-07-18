@@ -60,6 +60,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     return '${lastMonthDate.year}-${lastMonthDate.month.toString().padLeft(2, '0')}';
   }
 
+  // 카테고리 int + 1 해서 불러오는 코드
   Future<void> _loadLastMonthSpending() async {
     final records = await RecordStorage.loadRecords();
     final lastMonth = _getLastMonth();
@@ -67,7 +68,11 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     final Map<String, int> totals = {};
     for (var record in records) {
       if (record.spendDate.startsWith(lastMonth)) {
-        totals[record.category] = (totals[record.category] ?? 0) + record.spendCost;
+        final int categoryId = record.spend_category;
+        if (categoryId > 0 && categoryId <= allCategories.length) {
+          final String categoryName = allCategories[categoryId - 1];
+          totals[categoryName] = (totals[categoryName] ?? 0) + record.spendCost;
+        }
       }
     }
 
@@ -75,6 +80,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
       lastMonthTotals = totals;
     });
   }
+
 
   void _addBudgetItem() {
     final selected = budgetItems.map((e) => e['category'] as String).toSet();
