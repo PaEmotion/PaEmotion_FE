@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 import '../models/record.dart';
-import '../utils/record_storage.dart';
+import '../api/api_client.dart';  // ApiClient.dio 사용
 
-// categoryMap 정의 (역으로도 쓰기 위해 Map<String, int> 생성)
 const Map<int, String> categoryMap = {
   1: '쇼핑',
   2: '배달음식',
@@ -49,7 +49,7 @@ class RecordEditScreen extends StatefulWidget {
 class _RecordEditScreenState extends State<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  late String _selectedCategory; // 문자열(예: '쇼핑')
+  late String _selectedCategory; // Int -> String 문자열
   late TextEditingController _itemController;
   late TextEditingController _amountController;
   late String _selectedEmotion;
@@ -59,17 +59,18 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   late List<String> _categories;
   late List<String> _emotions;
 
+  bool _isSaving = false;
+  bool _isDeleting = false;
+
   @override
   void initState() {
     super.initState();
 
-    // category int → string
     _selectedCategory = categoryMap[widget.record.spend_category] ?? '';
 
     _itemController = TextEditingController(text: widget.record.spendItem);
     _amountController = TextEditingController(text: widget.record.spendCost.toString());
 
-    // emotion int → string
     _selectedEmotion = emotionMap[widget.record.emotion_category] ?? '';
 
     _categories = categoryMap.values.toList();
@@ -90,30 +91,44 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
   }
 
   Future<void> _saveRecord() async {
-    if (_formKey.currentState!.validate()) {
-      // 선택된 문자열 → int로 변환
-      final selectedCategoryId = categoryReverseMap[_selectedCategory];
-      final selectedEmotionId = emotionReverseMap[_selectedEmotion];
+    if (!_formKey.currentState!.validate()) return;
 
-      if (selectedCategoryId == null || selectedEmotionId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('카테고리 또는 감정을 올바르게 선택해주세요.')),
-        );
-        return;
-      }
+    final selectedCategoryId = categoryReverseMap[_selectedCategory];
+    final selectedEmotionId = emotionReverseMap[_selectedEmotion];
 
-      final updatedRecord = Record(
-        spendId: widget.record.spendId,
-        spendDate: widget.record.spendDate,
-        spend_category: selectedCategoryId,
-        spendItem: _itemController.text.trim(),
-        spendCost: int.parse(_amountController.text),
-        emotion_category: selectedEmotionId,
-        userId: widget.record.userId,
+    if (selectedCategoryId == null || selectedEmotionId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('카테고리 또는 감정을 올바르게 선택해주세요.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final response = await ApiClient.dio.put(
+        '/records/edit/${widget.record.spendId}',
+        data: {
+          "spendItem": _itemController.text.trim(),
+          "spendCost": int.parse(_amountController.text.trim()),
+          "spendCategoryId": selectedCategoryId,
+          "emotionCategoryId": selectedEmotionId,
+        },
       );
 
-      await RecordStorage.updateRecord(updatedRecord);
-      Navigator.pop(context, true);
+      if (response.statusCode == 200) {
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('수정 중 오류 발생: $e')),
+      );
+    } finally {
+      setState(() => _isSaving = false);
     }
   }
 
@@ -136,9 +151,26 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
       ),
     );
 
-    if (shouldDelete == true) {
-      await RecordStorage.deleteRecord(widget.record.spendId);
-      Navigator.pop(context, true);
+    if (shouldDelete != true) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      final response = await ApiClient.dio.delete('/records/delete/${widget.record.spendId}');
+
+      if (response.statusCode == 200) {
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제 실패: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('삭제 중 오류 발생: $e')),
+      );
+    } finally {
+      setState(() => _isDeleting = false);
     }
   }
 
@@ -232,27 +264,32 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                 value == null || value.isEmpty ? '감정을 선택해주세요.' : null,
               ),
               const SizedBox(height: 32),
+
               ElevatedButton(
-                onPressed: _isToday ? _saveRecord : null,
+                onPressed: _isToday && !_isSaving ? _saveRecord : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text(
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
                   '수정하기',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: _isToday ? _confirmDelete : null,
+                onPressed: _isToday && !_isDeleting ? _confirmDelete : null,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.red),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
                 ),
-                child: const Text(
+                child: _isDeleting
+                    ? const CircularProgressIndicator(color: Colors.red)
+                    : const Text(
                   '삭제하기',
                   style: TextStyle(color: Colors.red, fontSize: 16),
                 ),
