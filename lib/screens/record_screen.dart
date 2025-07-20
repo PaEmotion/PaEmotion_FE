@@ -3,10 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:uuid/uuid.dart';
 
 import 'recordsuccess_screen.dart';
 import '../models/record.dart';
+import '../models/user.dart';
+import '../api/api_client.dart';
 
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
@@ -32,8 +33,16 @@ class _RecordScreenState extends State<RecordScreen> {
 
   Future<void> _submitRecord() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? 'unknown_user';
+    final userJson = prefs.getString('user');
 
+    if (userJson == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다.')),
+      );
+      return;
+    }
+
+    final user = User.fromJson(jsonDecode(userJson));
     final spendItem = _itemController.text.trim();
     final amountStr = _amountController.text.trim();
     final spendCost = int.tryParse(amountStr) ?? 0;
@@ -48,25 +57,35 @@ class _RecordScreenState extends State<RecordScreen> {
       return;
     }
 
-    final record = Record(
-      spendId: const Uuid().v4(), // 수정 필요
-      userId: userId,
-      spendDate: DateTime.now().toIso8601String(),
-      spend_category: _selectedCategoryIndex!,
-      spendItem: spendItem,
-      spendCost: spendCost,
-      emotion_category: _selectedEmotionIndex!,
-    );
+    final recordData = {
+      "userId": user.id,
+      "emotionCategoryId": _selectedEmotionIndex,
+      "spendCategoryId": _selectedCategoryIndex,
+      "spendItem": spendItem,
+      "spendCost": spendCost,
+      "spendDate": DateTime.now().toIso8601String().split('.').first,
+    };
 
-    final List<String> existingRecords = prefs.getStringList('records') ?? [];
-    existingRecords.add(jsonEncode(record.toJson()));
-    await prefs.setStringList('records', existingRecords);
+    try {
+      //디버그용
+      print('보내는 데이터: $recordData');
 
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const RecordSuccessScreen()),
-    );
+      final response = await ApiClient.dio.post('/records/create', data: recordData);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const RecordSuccessScreen()),
+        );
+      } else {
+        throw Exception('서버 오류: ${response.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('기록 저장 실패: $e')),
+      );
+    }
   }
 
   Widget _buildLabel(String text) {
@@ -191,6 +210,7 @@ class _RecordScreenState extends State<RecordScreen> {
     );
   }
 }
+
 
 
 

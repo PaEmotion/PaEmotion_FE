@@ -1,6 +1,6 @@
 class Record {
-  final String spendId;
-  final String userId;
+  final int spendId;
+  final int userId;
   final String spendDate;
   final int spend_category;
   final String spendItem;
@@ -21,20 +21,20 @@ class Record {
     'spendId': spendId,
     'userId': userId,
     'spendDate': spendDate,
-    'spend_category': spend_category,
+    'spendCategoryId': spend_category,
     'spendItem': spendItem,
     'spendCost': spendCost,
-    'emotion_category': emotion_category,
+    'emotionCategoryId': emotion_category,
   };
 
   factory Record.fromJson(Map<String, dynamic> json) => Record(
-    spendId: json['spendId'],
+    spendId: (json['spendId'] as num).toInt(),
     userId: json['userId'],
     spendDate: json['spendDate'],
-    spend_category: (json['spend_category'] as num).toInt(),
+    spend_category: (json['spendCategoryId'] as num).toInt(),
     spendItem: json['spendItem'],
     spendCost: (json['spendCost'] as num).toInt(),
-    emotion_category: (json['emotion_category'] as num).toInt(),
+    emotion_category: (json['emotionCategoryId'] as num).toInt(),
   );
 }
 
