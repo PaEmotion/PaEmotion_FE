@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 
@@ -6,6 +7,7 @@ import 'home_screen.dart';
 import 'signin_screen.dart';
 import 'pwreset_screen.dart';
 import '../api/api_client.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,15 +32,17 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
+        print("응답 데이터: ${response.data}");
+
         final data = response.data;
-        final accessToken = data['access_token'];
-        final name = data['name'];
+
+        final user = User.fromJson(data);
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', accessToken);
+        await prefs.setString('user', jsonEncode(user.toJson()));
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$name님, 안녕하세요!')),
+          SnackBar(content: Text('${user.name}님, 안녕하세요!')),
         );
 
         Navigator.pushReplacement(
@@ -46,6 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
+
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
