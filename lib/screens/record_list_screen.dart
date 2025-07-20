@@ -1,37 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/record.dart';
-import '../utils/record_storage.dart';
+import 'dart:convert';
 import 'record_edit_screen.dart';
-
-const Map<int, String> emotionMap = {
-  1: '행복',
-  2: '사랑',
-  3: '기대감',
-  4: '슬픔',
-  5: '우울',
-  6: '분노',
-  7: '스트레스',
-  8: '피로',
-  9: '불안',
-  10: '무료함',
-  11: '외로움',
-  12: '기회감',
-};
-
-const Map<int, String> categoryMap = {
-  1: '쇼핑',
-  2: '배달음식',
-  3: '외식',
-  4: '카페',
-  5: '취미',
-  6: '뷰티',
-  7: '건강',
-  8: '자기계발',
-  9: '선물',
-  10: '여행',
-  11: '모임',
-};
+import 'package:shared_preferences/shared_preferences.dart';
+import '../api/api_client.dart';
+import '../models/user.dart';
 
 class RecordListScreen extends StatefulWidget {
   final String? selectedDate; // yyyy-MM-dd 형식, null이면 오늘 날짜
@@ -44,7 +18,7 @@ class RecordListScreen extends StatefulWidget {
 
 class _RecordListScreenState extends State<RecordListScreen> {
   List<Record> _dateRecords = [];
-  bool _hasUpdated = false; // 수정, 삭제 여부 추적
+  bool _hasUpdated = false;
 
   @override
   void initState() {
@@ -53,19 +27,63 @@ class _RecordListScreenState extends State<RecordListScreen> {
   }
 
   Future<void> _loadRecordsForDate() async {
-    final allRecords = await RecordStorage.loadRecords();
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('user');
+
+    if (jsonString == null) {
+      print('[WARN] SharedPreferences에 user 정보 없음');
+      setState(() {
+        _dateRecords = [];
+      });
+      return;
+    }
+
+    final userMap = jsonDecode(jsonString);
+    final user = User.fromJson(userMap);
+    final userId = user.id;
+    //디버그용
+    print('불러온 userId: $userId');
+
     final targetDate = widget.selectedDate ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    //디버그용
+    print('📅 조회 대상 날짜: $targetDate');
 
-    final filteredRecords = allRecords.where((record) {
-      final dt = DateTime.parse(record.spendDate);
-      final recordDateStr = DateFormat('yyyy-MM-dd').format(dt);
-      return recordDateStr == targetDate;
-    }).toList();
+    try {
+      final response = await ApiClient.dio.get(
+        '/records/$userId/',
+        queryParameters: {'spendDate': targetDate},
+      );
 
-    setState(() {
-      _dateRecords = filteredRecords;
-    });
+      //디버그용
+      print('statusCode: ${response.statusCode}');
+      print('response.data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+
+        final List<Record> records = data.map((json) {
+          print('📄 record json: $json');
+          return Record.fromJson(json);
+        }).toList();
+
+        setState(() {
+          _dateRecords = records;
+        });
+      } else {
+        print('서버 응답 상태 오류: ${response.statusCode}');
+        setState(() {
+          _dateRecords = [];
+        });
+      }
+    } catch (e, stack) {
+      print('API 호출 예외 발생: $e');
+      print('Stack trace: $stack');
+      setState(() {
+        _dateRecords = [];
+      });
+    }
   }
+
 
   void _onRecordTap(Record record) {
     Navigator.push(
@@ -75,21 +93,21 @@ class _RecordListScreenState extends State<RecordListScreen> {
       ),
     ).then((result) {
       if (result == true) {
-        _hasUpdated = true; // 수정됨 표시
-        _loadRecordsForDate(); // 리스트 갱신
+        _hasUpdated = true;
+        _loadRecordsForDate();
       }
     });
   }
 
   Future<bool> _onWillPop() async {
-    Navigator.pop(context, _hasUpdated); // 상태 반환
-    return false; // 기존 pop block
+    Navigator.pop(context, _hasUpdated);
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop, // 뒤로가기 감지
+      onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: Text('${widget.selectedDate ?? '오늘'} 소비기록 수정'),
@@ -137,7 +155,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              '${NumberFormat('#,###').format(record.spendCost.toInt())}원',
+                              '${NumberFormat('#,###').format(record.spendCost)}원',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -154,6 +172,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
     );
   }
 }
+
 
 
 

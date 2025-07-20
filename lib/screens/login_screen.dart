@@ -32,6 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
+        print("응답 데이터: ${response.data}");
+
         final data = response.data;
 
         final user = User.fromJson(data);

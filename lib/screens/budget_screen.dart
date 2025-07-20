@@ -1,11 +1,17 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:percent_indicator/circular_percent_indicator.dart';
+
 import '../utils/budget_storage.dart';
-import '../models/budget.dart';
 import '../utils/record_storage.dart';
+import '../models/budget.dart';
+import '../models/user.dart';
+import '../api/api_client.dart';
+
 import 'budget_ai_screen.dart';
 import 'budget_edit_screen.dart';
 import 'budget_creating_screen.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -18,6 +24,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   int? _totalBudget;
   int? _totalSpending;
   late String _currentMonth;
+  double? _predictedSpending;
 
   Map<String, int> _categoryBudgets = {};
   Map<String, int> _categorySpendings = {};
@@ -26,7 +33,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    // 현재 월 예산만 표시합니다. 이전 월 데이터는 저장은 되지만 UI에 표시되지 않음.
     _currentMonth = "${now.year}-${now.month.toString().padLeft(2, '0')}";
     _loadData();
   }
@@ -47,12 +53,34 @@ class _BudgetScreenState extends State<BudgetScreen> {
       categorySpendings[category] = spending;
     }
 
-    setState(() {
-      _totalBudget = totalBudget == 0 ? null : totalBudget;
-      _totalSpending = totalSpending;
-      _categoryBudgets = categoryBudgets;
-      _categorySpendings = categorySpendings;
-    });
+    // 사용자 ID 불러오고 예측 요청
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString('user');
+      if (jsonString != null) {
+        final userMap = jsonDecode(jsonString);
+        final user = User.fromJson(userMap);
+
+        final response = await ApiClient.dio.get('/ml/predict/${user.id}');
+        final prediction = response.data['예측'][0];
+        if (mounted) {
+          setState(() {
+            _predictedSpending = prediction;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("예측 API 실패: $e");
+    }
+
+    if (mounted) {
+      setState(() {
+        _totalBudget = totalBudget == 0 ? null : totalBudget;
+        _totalSpending = totalSpending;
+        _categoryBudgets = categoryBudgets;
+        _categorySpendings = categorySpendings;
+      });
+    }
   }
 
   String _feedbackMessage() {
@@ -184,13 +212,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 Center(
                   child: Text(
                     _feedbackMessage(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: Colors.black,
                     ),
                   ),
                 ),
+                if (_predictedSpending != null) ...[
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      '다음주 지출은 ${_predictedSpending!.round().toString().replaceAllMapped(
+                        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                            (m) => '${m[1]},',
+                      )}원으로 예상됩니다.',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 40),
                 SizedBox(
                   width: double.infinity,
@@ -319,4 +363,5 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 }
+
 

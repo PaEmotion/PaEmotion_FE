@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:dio/dio.dart'; // 추후 사용 예정
+import '../api/api_client.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-import 'login_screen.dart'; // sharedpreference에 저장된 정보를 쓰는 게 좋을 듯 하다
+import '../models/user.dart';
 import 'aichat_screen.dart';
 import 'report_screen.dart';
 import 'budget_screen.dart';
@@ -14,7 +15,7 @@ import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
 import '../models/record.dart';
-import '../utils/record_storage.dart';
+// import '../utils/record_storage.dart';
 
 final Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -29,6 +30,22 @@ final Map<int, String> categoryMap = {
   10: '여행',
   11: '모임',
 };
+
+final Map<int, String> emotionMap = {
+  1: '행복',
+  2: '사랑',
+  3: '기대감',
+  4: '기회감',
+  5: '슬픔',
+  6: '우울',
+  7: '분노',
+  8: '스트레스',
+  9: '피로',
+  10: '불안',
+  11: '무료함',
+  12: '외로움',
+};
+
 
 final Map<String, Color> categoryColors = {
   '쇼핑': Colors.purple[300]!,
@@ -68,52 +85,81 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   List<Record> _todaysRecords = [];
-  String _username = '사용자님';
+  String _username = '.'; // error 방지용
 
   @override
   void initState() {
     super.initState();
-    _loadUsername();
+    _loadUser();
     _loadTodayRecords();
   }
 
-  Future<void> _loadUsername() async {
+  Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('username');
-    if (mounted) {
+    final jsonString = prefs.getString('user');
+    if (jsonString != null) {
+      final userMap = jsonDecode(jsonString);
+      final user = User.fromJson(userMap);
+      if (!mounted) return;
       setState(() {
-        _username = (name == null || name.isEmpty) ? '사용자님' : name;
+        _username = user.name.isNotEmpty ? user.name : '사용자님';
       });
     }
   }
 
   Future<void> _loadTodayRecords() async {
-    final allRecords = await RecordStorage.loadRecords();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('user');
+    if (jsonString == null) {
+      setState(() {
+        _todaysRecords = [];
+      });
+      return;
+    }
+    final userMap = jsonDecode(jsonString);
+    final user = User.fromJson(userMap);
+    final userId = user.id;
 
-    setState(() {
-      _todaysRecords = allRecords.where((record) =>
-      DateFormat('yyyy-MM-dd').format(DateTime.parse(record.spendDate)) == today).toList();
-    });
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      final response = await ApiClient.dio.get(
+        '/records/$userId/',
+        queryParameters: {
+          'spendDate': today,
+        },
+      );
+
+      // 디버그용
+      print('API 응답 상태: ${response.statusCode}');
+      print('API 응답 데이터 타입: ${response.data.runtimeType}');
+      print('API 응답 데이터 내용: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data as List<dynamic>;
+        final allRecords = data.map((e) => Record.fromJson(e)).toList();
+
+        setState(() {
+          _todaysRecords = allRecords;
+        });
+      } else {
+        throw Exception('API 호출 실패: 상태코드 ${response.statusCode}');
+      }
+    } catch (e) {
+
+      print('API 호출 에러: $e');
+      setState(() {
+        _todaysRecords = [];
+      });
+    }
   }
+
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
     if (index == 0) _loadTodayRecords();
   }
 
-  Color _getDominantEmotionColor(List<Record> records) {
-    final emotionCount = <int, int>{};
-    for (var r in records) {
-      emotionCount[r.emotion_category] = (emotionCount[r.emotion_category] ?? 0) + 1;
-    }
-    final sorted = emotionCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    int dominant = (sorted.length >= 2 && sorted[0].value == sorted[1].value)
-        ? records.last.emotion_category
-        : sorted.first.key;
-    return emotionColors[dominant]!.withOpacity(0.1);  // emotionColors는 Map<int, Color> 로 바꿔야 할 수도 있음
-  }
 
   String _getTopCategory(List<Record> records) {
     final totals = <int, int>{};
@@ -125,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
     return categoryMap[sorted.first.key] ?? '기타';
   }
+
 
   Widget _buildPieChartWithEmotionIcon() {
     final categoryTotals = <int, double>{};
@@ -170,7 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SizedBox(height: 25),
-        Text('$_username, 안녕하세요! 😊\n행운 가득한 하루 보내세요.',
+
+        Text('$_username님, 안녕하세요! 😊\n행운 가득한 하루 보내세요.',
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
 
         if (_todaysRecords.isEmpty)
@@ -229,9 +277,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
 
           ..._todaysRecords.map((record) {
-            final emotion = record.emotion_category;
-            final dotColor = emotionColors[emotion] ?? Colors.grey;
-            final backgroundColor = (emotionColors[emotion] ?? Colors.grey).withOpacity(0.1);
+            final emotionId = record.emotion_category;
+            final emotionName = emotionMap[emotionId] ?? '감정없음';
+            final dotColor = emotionColors[emotionName] ?? Colors.grey;
+            final backgroundColor = dotColor.withOpacity(0.1);
             final catName = categoryMap[record.spend_category] ?? '기타';
 
             return Container(
@@ -249,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
                   ),
-                  Text('$emotion 소비', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text('$emotionName 소비', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ]),
                 const SizedBox(height: 6),
                 Text('$catName - ${record.spendItem}', style: const TextStyle(fontSize: 16)),
