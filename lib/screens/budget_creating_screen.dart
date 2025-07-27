@@ -1,10 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '../models/budget.dart';
-import '../models/record.dart';
-import '../utils/budget_storage.dart';
-import '../utils/record_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user.dart';
+import '../api/api_client.dart';
 
 class BudgetCreatingScreen extends StatefulWidget {
   const BudgetCreatingScreen({super.key});
@@ -24,8 +24,10 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
 
   List<Map<String, Object>> budgetItems = [];
   Map<String, int> lastMonthTotals = {};
+  int lastMonthTotalSpent = 0;
 
   final NumberFormat numberFormat = NumberFormat('#,###');
+  int? _userId;
 
   int get totalBudget {
     int sum = 0;
@@ -40,18 +42,19 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedBudgets();
-    _loadLastMonthSpending();
+    _loadUserAndLastMonthSpending();
   }
 
-  Future<void> _loadSavedBudgets() async {
-    final savedBudgets = await BudgetStorage.loadBudgets(currentMonth);
-    setState(() {
-      budgetItems = savedBudgets.map((b) => <String, Object>{
-        'category': b.category,
-        'controller': TextEditingController(text: b.amount.toString()),
-      }).toList();
-    });
+  Future<void> _loadUserAndLastMonthSpending() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('user');
+    if (jsonString == null) return;
+
+    final userMap = jsonDecode(jsonString);
+    final user = User.fromJson(userMap);
+    _userId = user.id;
+
+    await _loadLastMonthSpendingFromApi();
   }
 
   String _getLastMonth() {
@@ -60,27 +63,51 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     return '${lastMonthDate.year}-${lastMonthDate.month.toString().padLeft(2, '0')}';
   }
 
-  // 카테고리 int + 1 해서 불러오는 코드
-  Future<void> _loadLastMonthSpending() async {
-    final records = await RecordStorage.loadRecords();
-    final lastMonth = _getLastMonth();
+  Future<void> _loadLastMonthSpendingFromApi() async {
+    if (_userId == null) return;
 
-    final Map<String, int> totals = {};
-    for (var record in records) {
-      if (record.spendDate.startsWith(lastMonth)) {
-        final int categoryId = record.spend_category;
-        if (categoryId > 0 && categoryId <= allCategories.length) {
-          final String categoryName = allCategories[categoryId - 1];
-          totals[categoryName] = (totals[categoryName] ?? 0) + record.spendCost;
+    final dio = ApiClient.dio;
+    final lastMonthStr = '${_getLastMonth()}-01';
+
+    debugPrint('User ID: $_userId');
+    debugPrint('Requesting last month spending for: $lastMonthStr');
+    debugPrint('Full URL: ${dio.options.baseUrl}/budgets/lastspent/$_userId');
+
+    try {
+      final response = await dio.get(
+        '/budgets/lastspent/$_userId',
+        queryParameters: {'lastMonth': lastMonthStr},
+      );
+
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        Map<String, int> totals = {};
+        if (data['categorySpent'] != null) {
+          for (final item in data['categorySpent']) {
+            final int spendCategoryId = item['spendCategoryId'];
+            final int spent = item['spent'];
+            if (spendCategoryId > 0 && spendCategoryId <= allCategories.length) {
+              final String categoryName = allCategories[spendCategoryId - 1];
+              totals[categoryName] = spent;
+            }
+          }
         }
+
+        setState(() {
+          lastMonthTotals = totals;
+          lastMonthTotalSpent = data['totalSpent'] ?? 0;
+        });
+      } else {
+        debugPrint('지난달 소비 API 실패: 상태코드 ${response.statusCode}');
       }
+    } catch (e) {
+      debugPrint('지난달 소비 API 호출 중 오류: $e');
     }
-
-    setState(() {
-      lastMonthTotals = totals;
-    });
   }
-
 
   void _addBudgetItem() {
     final selected = budgetItems.map((e) => e['category'] as String).toSet();
@@ -109,6 +136,13 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   Future<void> _saveBudgets() async {
+    if (_userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다.')),
+      );
+      return;
+    }
+
     for (final item in budgetItems) {
       final controller = item['controller'] as TextEditingController;
       final amount = int.tryParse(controller.text) ?? 0;
@@ -120,14 +154,42 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
       }
     }
 
-    for (final item in budgetItems) {
-      final category = item['category'] as String;
+    final List<Map<String, dynamic>> categoryBudgetJson = budgetItems.map((item) {
+      final categoryName = item['category'] as String;
+      final spendCategoryId = allCategories.indexOf(categoryName) + 1;
       final amount = int.parse((item['controller'] as TextEditingController).text);
-      final budget = Budget(month: currentMonth, category: category, amount: amount);
-      await BudgetStorage.saveBudget(budget);
-    }
+      return {
+        'spendCategoryId': spendCategoryId,
+        'amount': amount,
+      };
+    }).toList();
 
-    _showDialog('예산이 저장되었습니다!');
+    final String budgetMonth = '$currentMonth-01';
+
+    final requestBody = {
+      'budgetMonth': budgetMonth,
+      'categoryBudget': categoryBudgetJson,
+    };
+
+    try {
+      final dio = ApiClient.dio;
+      final response = await dio.post(
+        '/budgets/create/$_userId',
+        data: requestBody,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showDialog('예산이 성공적으로 저장되었습니다!');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('서버 전송 실패: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('전송 중 오류 발생: $e')),
+      );
+    }
   }
 
   void _showDialog(String message) {
@@ -181,7 +243,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                 itemCount: budgetItems.length,
                 itemBuilder: (context, index) {
                   final item = budgetItems[index];
-                  final category = item['category'] as String;
+                  final category = (item['category'] ?? '') as String;
                   final controller = item['controller'] as TextEditingController;
 
                   return Padding(
@@ -278,7 +340,20 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
               "총 예산: ${numberFormat.format(totalBudget)}원",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            Text(
+              '지난달 총 소비금액: ${numberFormat.format(lastMonthTotalSpent)}원',
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
             const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                '예산 설정 전에 한 번 더 확인해주세요.\n설정 후에는 수정이 제한돼요.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -300,4 +375,3 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     );
   }
 }
-

@@ -15,7 +15,7 @@ import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
 import '../models/record.dart';
-// import '../utils/record_storage.dart';
+
 
 final Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -85,16 +85,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   List<Record> _todaysRecords = [];
-  String _username = '.'; // error 방지용
+  String _username = '.';
 
   @override
   void initState() {
     super.initState();
     _loadUser();
     _loadTodayRecords();
-  }
-
-  Future<void> _loadUser() async {
+  }Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString('user');
     if (jsonString != null) {
@@ -121,16 +119,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final userId = user.id;
 
     try {
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final today = DateTime.now();
+      final tomorrow = today.add(const Duration(days: 1));
 
       final response = await ApiClient.dio.get(
-        '/records/$userId/',
+        '/records/$userId',
         queryParameters: {
-          'spendDate': today,
+          'startDate': DateFormat('yyyy-MM-dd').format(today),
+          'endDate': DateFormat('yyyy-MM-dd').format(tomorrow),
         },
       );
 
-      // 디버그용
+      // 디버깅용
       print('API 응답 상태: ${response.statusCode}');
       print('API 응답 데이터 타입: ${response.data.runtimeType}');
       print('API 응답 데이터 내용: ${response.data}');
@@ -143,15 +143,17 @@ class _HomeScreenState extends State<HomeScreen> {
           _todaysRecords = allRecords;
         });
       } else {
+        // 실제 에러
         throw Exception('API 호출 실패: 상태코드 ${response.statusCode}');
       }
     } catch (e) {
-
-      print('API 호출 에러: $e');
+      //통신 실패나 파싱 에러
+      print('📛 네트워크 오류 또는 파싱 오류: $e');
       setState(() {
         _todaysRecords = [];
       });
     }
+
   }
 
 
@@ -322,6 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+
+
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
@@ -343,8 +347,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PaEmotion',
-            style: TextStyle(fontFamily: 'Roboto', fontSize: 30, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Image.asset(
+            'lib/assets/paemotion_logo.png',
+            height: 32,
+            fit: BoxFit.contain,
+          ),
+        ),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,

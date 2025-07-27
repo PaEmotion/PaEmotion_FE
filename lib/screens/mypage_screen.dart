@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import '../models/user.dart';
 import '../utils/user_storage.dart';
-import 'mp_challenge_list_screen.dart';
 import 'mp_edit_screen.dart';
 import 'mp_pwreset_screen.dart';
 import 'test_main_screen.dart';
@@ -103,21 +102,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
               trailing: const Icon(Icons.chevron_right),
             ),
 
-            const Divider(height: 40),
-
-            Text('과거 챌린지', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('챌린지 관리'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MpChallengeListScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
             const Divider(height: 40),
 
             Text('기타', style: Theme.of(context).textTheme.titleMedium),

@@ -1,11 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../models/record.dart';
-import '../utils/record_storage.dart';
-import 'record_list_screen.dart';
+import '../utils/record_utils.dart';
 
 final Map<String, Color> categoryColors = {
   '쇼핑': Colors.purple[300]!,
@@ -44,7 +44,6 @@ final List<String> allEmotions = [
   '행복', '사랑', '기대감', '기회감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움'
 ];
 
-
 class DailyReportScreen extends StatefulWidget {
   const DailyReportScreen({super.key});
 
@@ -53,6 +52,7 @@ class DailyReportScreen extends StatefulWidget {
 }
 
 class _DailyReportScreenState extends State<DailyReportScreen> {
+  final numberFormat = NumberFormat('#,###');
   List<Record> _allRecords = [];
   List<String> _availableDates = [];
   Set<String> _availableDateSet = {};
@@ -62,51 +62,75 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRecords();
+    final now = DateTime.now();
+    _selectedDate = now;
+    _loadAvailableDatesForMonth(now);
   }
 
-  Future<void> _loadRecords() async {
-    final records = await RecordStorage.loadRecords();
-    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final filtered = records.where((r) {
-      final d = DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate));
-      return d != todayStr;
-    }).toList();
-    final dates = filtered
-        .map((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)))
-        .toSet()
-        .toList()
-      ..sort();
+  Future<void> _loadAvailableDatesForMonth(DateTime month) async {
+    try {
+      final firstDay = DateTime(month.year, month.month, 1);
+      final lastDay = DateTime(month.year, month.month + 1, 0);
 
-    setState(() {
-      _allRecords = filtered;
-      _availableDates = dates;
-      _availableDateSet = dates.toSet();
-      _selectedDate = dates.isNotEmpty ? DateTime.parse(dates.last) : DateTime.now();
-    });
-  }
+      final records = await fetchRecordsInRange(firstDay, lastDay);
 
-  void _changeDateBySwipe(bool forward) {
-    final current = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final index = _availableDates.indexOf(current);
-    if (index == -1) return;
-    final newIndex = forward ? index + 1 : index - 1;
-    if (newIndex >= 0 && newIndex < _availableDates.length) {
+      final datesWithRecords = records
+          .map((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)))
+          .toSet()
+          .toList()
+        ..sort((a, b) => b.compareTo(a));
+
       setState(() {
-        _selectedDate = DateTime.parse(_availableDates[newIndex]);
+        _allRecords = records;
+        _availableDates = datesWithRecords;
+        _availableDateSet = datesWithRecords.toSet();
+
+        final selectedStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        if (!_availableDateSet.contains(selectedStr)) {
+          _selectedDate = datesWithRecords.isNotEmpty
+              ? DateTime.parse(datesWithRecords.first)
+              : firstDay;
+        }
+      });
+    } catch (e) {
+      print('한 달치 기록 불러오기 실패: $e');
+      setState(() {
+        _allRecords = [];
+        _availableDates = [];
+        _availableDateSet = {};
       });
     }
   }
 
-  final List<String> allCategories = [
-    '쇼핑', '배달음식', '외식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
-  ];
+  List<Record> _recordsForDate(DateTime date) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    return _allRecords.where((r) =>
+    DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)) == dateStr).toList();
+  }
 
-  final List<String> allEmotions = [
-    '행복', '사랑', '기대감', '기회감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움'
-  ];
+  Map<String, int> _getCategoryTotals(List<Record> records) {
+    final map = <String, int>{};
+    for (var r in records) {
+      final id = r.spend_category;
+      if (id > 0 && id <= allCategories.length) {
+        final name = allCategories[id - 1];
+        map[name] = (map[name] ?? 0) + r.spendCost;
+      }
+    }
+    return map;
+  }
 
-
+  Map<String, int> _getEmotionCounts(List<Record> records) {
+    final map = <String, int>{};
+    for (var r in records) {
+      final id = r.emotion_category;
+      if (id > 0 && id <= allEmotions.length) {
+        final name = allEmotions[id - 1];
+        map[name] = (map[name] ?? 0) + 1;
+      }
+    }
+    return map;
+  }
 
   List<PieChartSectionData> _buildPieSections(Map<String, int> dataMap, Map<String, Color> colorMap) {
     final total = dataMap.values.fold(0, (a, b) => a + b);
@@ -120,6 +144,54 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         title: '',
       );
     }).toList();
+  }
+
+  Widget _buildSpendList(List<Record> records) {
+    if (records.isEmpty) {
+      return const Text('소비 항목 없음');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '소비 항목',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...records.map((record) {
+          final emotionIndex = (record.emotion_category - 1).clamp(0, allEmotions.length - 1);
+          final emotionName = allEmotions[emotionIndex];
+          final emotionColor = emotionColors[emotionName] ?? Colors.grey;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: emotionColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Text(record.spendItem, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+                Text('${numberFormat.format(record.spendCost)}원',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey)),
+              ],
+            ),
+          );
+        }).toList(),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   Widget _buildAllList(String title, Map<String, int> dataMap, Map<String, Color> colorMap) {
@@ -168,38 +240,30 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     );
   }
 
-  List<Record> _recordsForDate(DateTime date) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    return _allRecords.where((r) => DateFormat('yyyy-MM-dd').format(DateTime.parse(r.spendDate)) == dateStr).toList();
+  void _onDateSelected(DateTime selected) {
+    final formatted = DateFormat('yyyy-MM-dd').format(selected);
+    if (_availableDateSet.contains(formatted)) {
+      setState(() {
+        _selectedDate = selected;
+      });
+    }
   }
 
-  Map<String, int> _getCategoryTotals(List<Record> records) {
-    final map = <String, int>{};
-    for (var r in records) {
-      final id = r.spend_category;
-      if (id > 0 && id <= allCategories.length) {
-        final name = allCategories[id - 1]; // id → 이름
-        map[name] = (map[name] ?? 0) + r.spendCost;
-      }
+  void _changeDateBySwipe(bool forward) {
+    final currentStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final index = _availableDates.indexOf(currentStr);
+    if (index == -1) return;
+    final newIndex = forward ? index + 1 : index - 1;
+    if (newIndex >= 0 && newIndex < _availableDates.length) {
+      final newDate = DateTime.parse(_availableDates[newIndex]);
+      setState(() {
+        _selectedDate = newDate;
+      });
     }
-    return map;
-  }
-
-  Map<String, int> _getEmotionCounts(List<Record> records) {
-    final map = <String, int>{};
-    for (var r in records) {
-      final id = r.emotion_category;
-      if (id > 0 && id <= allEmotions.length) {
-        final name = allEmotions[id - 1]; // id → 이름
-        map[name] = (map[name] ?? 0) + 1;
-      }
-    }
-    return map;
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final records = _recordsForDate(_selectedDate);
     final categoryData = _getCategoryTotals(records);
     final emotionData = _getEmotionCounts(records);
@@ -213,9 +277,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         iconTheme: const IconThemeData(color: Colors.black87),
         centerTitle: true,
       ),
-      body: _availableDates.isEmpty
-          ? const Center(child: Text('소비기록이 없습니다.'))
-          : Column(
+      body: Column(
         children: [
           GestureDetector(
             onTap: () => setState(() => _isCalendarVisible = !_isCalendarVisible),
@@ -224,8 +286,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(DateFormat('yyyy년 M월 d일').format(_selectedDate),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    DateFormat('yyyy년 M월 d일').format(_selectedDate),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(width: 8),
                   Icon(_isCalendarVisible ? Icons.expand_less : Icons.expand_more, size: 20),
                 ],
@@ -234,33 +298,35 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           ),
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 250),
-            crossFadeState: _isCalendarVisible ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _isCalendarVisible
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             firstChild: const SizedBox.shrink(),
             secondChild: TableCalendar(
               focusedDay: _selectedDate,
-              firstDay: DateTime.utc(2022, 1, 1),
+              firstDay: DateTime.utc(2025, 1, 1),
               lastDay: DateTime.utc(2030, 12, 31),
               calendarFormat: CalendarFormat.month,
               selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
               onDaySelected: (selected, focused) {
-                final formatted = DateFormat('yyyy-MM-dd').format(selected);
-                if (_availableDateSet.contains(formatted)) {
-                  setState(() {
-                    _selectedDate = selected;
-                    _isCalendarVisible = false;
-                  });
-                }
+                _onDateSelected(selected);
               },
-              enabledDayPredicate: (day) => _availableDateSet.contains(DateFormat('yyyy-MM-dd').format(day)),
+              enabledDayPredicate: (day) =>
+                  _availableDateSet.contains(DateFormat('yyyy-MM-dd').format(day)),
               headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
               calendarStyle: CalendarStyle(
                 selectedDecoration: BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
                 selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
+              onPageChanged: (focusedDay) {
+                _loadAvailableDatesForMonth(focusedDay);
+              },
             ),
           ),
           Expanded(
-            child: GestureDetector(
+            child: _availableDates.isEmpty
+                ? const Center(child: Text('소비기록이 없습니다.'))
+                : GestureDetector(
               onHorizontalDragEnd: (details) {
                 if (details.primaryVelocity == null) return;
                 if (details.primaryVelocity! < 0) {
@@ -285,6 +351,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                       const SizedBox(height: 24),
+                      _buildSpendList(records),
                       SizedBox(
                         height: 200,
                         child: categoryPie.isEmpty
@@ -319,28 +386,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -71,13 +71,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('로그인')),
-      body: Center(
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 60.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              const SizedBox(height: 100),
+              // 로고 이미지
+              Image.asset(
+                'lib/assets/paemotion_logo.png', // 또는 'assets/paemotion_logo.png'
+                height: 50,
+                // 원하면 더 키워도 됨
+              ),
+              const SizedBox(height: 100), // 로고와 입력창 사이 간격
+
+              // 이메일 입력
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -86,6 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 20.0),
+
+              // 비밀번호 입력
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -105,6 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 30.0),
+
+              // 로그인 버튼
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -113,6 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 10.0),
+
+              // 회원가입 / 비밀번호 찾기
               TextButton(
                 onPressed: () {
                   Navigator.push(
