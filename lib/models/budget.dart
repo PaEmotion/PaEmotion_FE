@@ -1,23 +1,19 @@
-class Budget {
-  final String month; // 예: '2025-07'
-  final String category; // 예: '쇼핑'
-  final int amount; // 예: 100000
+class CategoryBudget {
+  final int spendCategoryId;
+  final int amount;
 
-  Budget({
-    required this.month,
-    required this.category,
+  CategoryBudget({
+    required this.spendCategoryId,
     required this.amount,
   });
 
   Map<String, dynamic> toJson() => {
-    'month': month,
-    'category': category,
+    'spendCategoryId': spendCategoryId,
     'amount': amount,
   };
 
-  factory Budget.fromJson(Map<String, dynamic> json) => Budget(
-    month: json['month'],
-    category: json['category'],
+  factory CategoryBudget.fromJson(Map<String, dynamic> json) => CategoryBudget(
+    spendCategoryId: json['spendCategoryId'],
     amount: json['amount'],
   );
 }

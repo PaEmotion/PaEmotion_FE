@@ -1,16 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
-import '../utils/budget_storage.dart';
-import '../utils/record_storage.dart';
-import '../models/budget.dart';
 import '../models/user.dart';
+import '../models/record.dart';
 import '../api/api_client.dart';
-
-import 'budget_ai_screen.dart';
-import 'budget_edit_screen.dart';
 import 'budget_creating_screen.dart';
 
 class BudgetScreen extends StatefulWidget {
@@ -25,9 +21,21 @@ class _BudgetScreenState extends State<BudgetScreen> {
   int? _totalSpending;
   late String _currentMonth;
   double? _predictedSpending;
-
-  Map<String, int> _categoryBudgets = {};
-  Map<String, int> _categorySpendings = {};
+  Map<int, int> _categoryBudgets = {}; // spendCategoryId -> amount
+  Map<int, int> _categorySpendings = {}; // spendCategoryId -> actual spending
+  Map<int, String> _categoryNames = {
+    1: '쇼핑',
+    2: '배달음식',
+    3: '외식',
+    4: '카페',
+    5: '취미',
+    6: '뷰티',
+    7: '건강',
+    8: '자기계발',
+    9: '선물',
+    10: '여행',
+    11: '모임',
+  };
 
   @override
   void initState() {
@@ -38,48 +46,110 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _loadData() async {
-    final budgets = await BudgetStorage.loadBudgets(_currentMonth);
-    int totalBudget = 0;
-    Map<String, int> categoryBudgets = {};
-    for (var b in budgets) {
-      totalBudget += b.amount;
-      categoryBudgets[b.category] = b.amount;
-    }
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('user');
+    if (jsonString == null) return;
 
-    final totalSpending = await RecordStorage.getMonthlySpending(_currentMonth);
-    Map<String, int> categorySpendings = {};
-    for (var category in categoryBudgets.keys) {
-      final spending = await RecordStorage.getCategorySpending(_currentMonth, category);
-      categorySpendings[category] = spending;
-    }
+    final userMap = jsonDecode(jsonString);
+    final user = User.fromJson(userMap);
+    final userId = user.id;
 
-    // 사용자 ID 불러오고 예측 요청
+    final startOfMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final endOfMonth = DateTime.now().add(const Duration(days: 1)); // 내일까지 포함
+
+    final budgetMonthStr = DateFormat('yyyy-MM-dd').format(startOfMonth);
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString('user');
-      if (jsonString != null) {
-        final userMap = jsonDecode(jsonString);
-        final user = User.fromJson(userMap);
+      // 1. 예산 데이터 조회
+      final budgetRes = await ApiClient.dio.get(
+        '/budgets/$userId',
+        queryParameters: {'budgetMonth': budgetMonthStr},
+      );
+      final budgetData = budgetRes.data;
 
-        final response = await ApiClient.dio.get('/ml/predict/${user.id}');
-        final prediction = response.data['예측'][0];
-        if (mounted) {
-          setState(() {
-            _predictedSpending = prediction;
-          });
-        }
+      if (budgetData == null || budgetData['categoryBudget'] == null) {
+        setState(() {
+          _totalBudget = null;
+          _categoryBudgets = {};
+          _totalSpending = null;
+          _categorySpendings = {};
+          _predictedSpending = null;
+        });
+        return;
+      }
+
+      final int totalAmount = budgetData['totalAmount'] ?? 0;
+      final List categoryList = budgetData['categoryBudget'];
+
+      // 예산 데이터가 있는 카테고리만 맵으로 저장
+      final Map<int, int> categoryBudgets = {
+        for (var item in categoryList)
+          (item['spendCategoryId'] as int): (item['amount'] as int),
+      };
+
+      // 2. 현재 달 소비 기록 불러오기
+      List<Record> records = await fetchRecordsInRange(startOfMonth, endOfMonth);
+
+      // 3. 카테고리별 소비 합산
+      Map<int, int> categorySpendings = {};
+      int totalSpending = 0;
+
+      for (var record in records) {
+        final catId = record.spend_category;  // spendCategoryId
+        final amount = record.spendCost;
+        categorySpendings[catId] = (categorySpendings[catId] ?? 0) + amount;
+        totalSpending += amount;
+      }
+
+      final response = await ApiClient.dio.get('/ml/predict/$userId');
+      final predList = response.data['예측'];
+      double? prediction;
+
+
+      if (predList is List && predList.isNotEmpty) {
+        prediction = predList[0].toDouble();
+      } else {
+        prediction = null;
+      }
+
+
+      if (mounted) {
+        setState(() {
+          _totalBudget = totalAmount;
+          _categoryBudgets = categoryBudgets;
+          _totalSpending = totalSpending;
+          _categorySpendings = categorySpendings;
+          _predictedSpending = prediction;
+        });
       }
     } catch (e) {
-      debugPrint("예측 API 실패: $e");
+      debugPrint("데이터 로드 실패: $e");
     }
+  }
 
-    if (mounted) {
-      setState(() {
-        _totalBudget = totalBudget == 0 ? null : totalBudget;
-        _totalSpending = totalSpending;
-        _categoryBudgets = categoryBudgets;
-        _categorySpendings = categorySpendings;
+  Future<List<Record>> fetchRecordsInRange(DateTime start, DateTime end) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user');
+    if (userJson == null) throw Exception('로그인 정보 없음');
+    final userMap = jsonDecode(userJson);
+    final user = User.fromJson(userMap);
+    final userId = user.id;
+    final dio = ApiClient.dio;
+
+    try {
+      final res = await dio.get('/records/$userId', queryParameters: {
+        'startDate': DateFormat('yyyy-MM-dd').format(start),
+        'endDate': DateFormat('yyyy-MM-dd').format(end),
       });
+      final data = res.data;
+      if (data is List && data.isNotEmpty) {
+        return data.map<Record>((e) => Record.fromJson(e)).toList();
+      } else {
+        return <Record>[];
+      }
+    } catch (e) {
+      print('기록 불러오기 실패 ($start ~ $end): $e');
+      return <Record>[];
     }
   }
 
@@ -99,6 +169,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
         _totalBudget! > 0)
         ? (_totalSpending! / _totalBudget!)
         : 0.0;
+
+    final allCatIds = _categoryNames.keys.toList()..sort();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -147,48 +219,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (_categoryBudgets.isNotEmpty)
-                  ..._categoryBudgets.entries.map((entry) {
-                    final category = entry.key;
-                    final catBudget = entry.value;
-                    final catSpending = _categorySpendings[category] ?? 0;
-                    final catPercent = catBudget > 0
-                        ? (catSpending / catBudget)
-                        : 0.0;
-
-                    return Column(
-                      children: [
-                        ListTile(
-                          title: Text(
-                            category,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '예산: ${catBudget.toString().replaceAllMapped(
-                              RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                                  (m) => '${m[1]},',
-                            )}원, 사용: ${catSpending.toString().replaceAllMapped(
-                              RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                                  (m) => '${m[1]},',
-                            )}원',
-                          ),
-                          trailing: CircularPercentIndicator(
-                            radius: 16,
-                            lineWidth: 3,
-                            percent: catPercent > 1.0 ? 1.0 : catPercent,
-                            progressColor: catPercent > 1.0 ? Colors.orangeAccent : Colors.green,
-                            backgroundColor: Colors.grey.shade300,
-                            animation: true,
-                          ),
-                        ),
-                        const Divider(),
-                      ],
-                    );
-                  }).toList(),
-                const SizedBox(height: 20),
                 Center(
                   child: CircularPercentIndicator(
                     radius: 120,
@@ -234,100 +264,70 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ),
                     ),
                   ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      '다음주 지출 예측 정보가 아직 생성되지 않았어요.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ),
                 ],
+
                 const SizedBox(height: 40),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BudgetAiScreen(),
+
+                // 모든 카테고리의 사용내역 표시 (예산 설정 안한 카테고리까지 표시)
+                ...allCatIds.map((catId) {
+                  final catBudget = _categoryBudgets[catId] ?? 0;
+                  final catSpending = _categorySpendings[catId] ?? 0;
+                  final catPercent = catBudget > 0
+                      ? (catSpending / catBudget)
+                      : (catSpending > 0 ? 1.0 : 0.0);
+
+                  final catColor = (catPercent >= 1.0 || (catBudget == 0 && catSpending > 0))
+                      ? Colors.orange[700]!
+                      : Colors.green.withOpacity(catPercent.clamp(0.5, 1.0));
+
+
+                  return Column(
+                    children: [
+                      ListTile(
+                        title: Text(
+                          _categoryNames[catId] ?? '카테고리 $catId',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ).then((value) {
-                        if (value == true) {
-                          _loadData();
-                        }
-                      });
-                    },
-                    child: const Text(
-                      '예산 사용 분석 보러가기',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        subtitle: Text(
+                          '예산: ${catBudget.toString().replaceAllMapped(
+                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                                (m) => '${m[1]},',
+                          )}원, 사용: ${catSpending.toString().replaceAllMapped(
+                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                                (m) => '${m[1]},',
+                          )}원',
+                        ),
+                        trailing: CircularPercentIndicator(
+                          radius: 16,
+                          lineWidth: 3,
+                          percent: catPercent.clamp(0.0, 1.0),
+                          progressColor: catColor,
+                          backgroundColor: Colors.grey.shade300,
+                          animation: true,
+                        ),
                       ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const BudgetEditScreen()),
-                      ).then((value) {
-                        if (value == true) _loadData();
-                      });
-                    },
-                    child: const Text(
-                      '예산 수정하기',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 60),
+                      const Divider(),
+                    ],
+                  );
+                }).toList(),
               ],
               if (_totalBudget == null) ...[
                 const SizedBox(height: 450),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BudgetAiScreen(),
-                        ),
-                      ).then((value) {
-                        if (value == true) {
-                          _loadData();
-                        }
-                      });
-                    },
-                    child: const Text(
-                      'AI에게 예산 설정 도움받기',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -363,5 +363,3 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 }
-
-
