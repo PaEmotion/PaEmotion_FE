@@ -1,9 +1,15 @@
+// ✅ 아래는 주간 리포트처럼, 제목/날짜/내용을 모두 영수증 이미지 안에 넣고
+// 차트는 그 아래에 분리하여 배치한 수정된 월간 리포트 전체 코드입니다.
+
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/record.dart';
-import '../utils/record_storage.dart';
+import '../utils/record_utils.dart';
+import '../utils/report_utils.dart';
+import '../models/report.dart';
 
 final Map<String, Color> categoryColors = {
   '쇼핑': Colors.purple[300]!,
@@ -39,9 +45,8 @@ final List<String> allCategories = [
 ];
 
 final List<String> allEmotions = [
-  '행복', '사랑', '기대감', '기회감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움'
+  '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감'
 ];
-
 
 class MonthlyReportScreen extends StatefulWidget {
   const MonthlyReportScreen({super.key});
@@ -51,82 +56,80 @@ class MonthlyReportScreen extends StatefulWidget {
 }
 
 class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
-  List<Record> _allRecords = [];
-  List<String> _availableMonths = [];
-  String? _selectedMonth;
-  late PageController _pageController;
+  List<String> _validMonths = [];
+  int _currentPageIndex = 0;
+  String? _selectedReportText;
+  List<Record> _currentMonthRecords = [];
+  bool _loading = true;
+
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
-    _loadRecords();
+    _initialise();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  Future<void> _initialise() async {
+    final allReports = await ReportUtils.loadCachedReports();
+    final monthlyReports = allReports.where((r) => r.reportType == 'monthly').toList();
 
-  Future<void> _loadRecords() async {
-    final records = await RecordStorage.loadRecords();
-    final now = DateTime.now();
-    final currentMonthStr = DateFormat('yyyy-MM').format(DateTime(now.year, now.month));
+    final monthKeys = monthlyReports.map((r) {
+      final date = DateTime.parse(r.reportDate);
+      final firstDay = DateTime(date.year, date.month, 1);
+      return DateFormat('yyyy-MM-dd').format(firstDay);
+    }).toSet().toList();
 
-    final allMonths = records.map((r) {
-      final dt = DateTime.parse(r.spendDate);
-      return DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
-    }).toSet().toList()
-      ..sort();
-
-    final filteredMonths = allMonths.where((m) => m != currentMonthStr).toList();
-    final lastPageIndex = filteredMonths.isNotEmpty ? filteredMonths.length - 1 : 0;
+    monthKeys.sort((a, b) => b.compareTo(a));
 
     setState(() {
-      _allRecords = records;
-      _availableMonths = filteredMonths;
-      _selectedMonth = filteredMonths.isNotEmpty ? filteredMonths.last : null;
-      _pageController.dispose();
-      _pageController = PageController(initialPage: lastPageIndex);
+      _validMonths = monthKeys;
+      _currentPageIndex = 0;
+      _loading = false;
     });
-  }
 
-  void _onPageChanged(int index) {
-    setState(() {
-      _selectedMonth = _availableMonths[index];
-    });
-  }
-
-  void _onDropdownChanged(String? newMonth) {
-    if (newMonth == null) return;
-    final newIndex = _availableMonths.indexOf(newMonth);
-    if (newIndex != -1) {
-      _pageController.animateToPage(
-        newIndex,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      setState(() {
-        _selectedMonth = newMonth;
-      });
+    if (_validMonths.isNotEmpty) {
+      final firstMonth = _parseMonthKey(_validMonths.first);
+      await _loadReportTextForMonth(_validMonths.first);
+      await _loadRecordsForMonth(firstMonth);
     }
   }
 
-  List<Record> _recordsForMonth(String month) {
-    return _allRecords.where((r) {
-      final dt = DateTime.parse(r.spendDate);
-      final recordMonth = DateFormat('yyyy-MM').format(DateTime(dt.year, dt.month));
-      return recordMonth == month;
-    }).toList();
+  Future<void> _loadReportTextForMonth(String selectedMonthKey) async {
+    final allReports = await ReportUtils.loadCachedReports();
+    Report? target;
+
+    for (final r in allReports) {
+      if (r.reportType != 'monthly') continue;
+      final firstDay = DateTime.parse(r.reportDate);
+      final monthKey = DateFormat('yyyy-MM-dd').format(DateTime(firstDay.year, firstDay.month, 1));
+      if (monthKey == selectedMonthKey) {
+        target = r;
+        break;
+      }
+    }
+
+    setState(() {
+      _selectedReportText = target?.reportText ?? '';
+    });
   }
+
+  Future<void> _loadRecordsForMonth(DateTime monthStart) async {
+    final nextMonth = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final records = await fetchRecordsInRange(monthStart, nextMonth);
+    setState(() {
+      _currentMonthRecords = records;
+    });
+  }
+
+  DateTime _parseMonthKey(String monthKey) => DateTime.parse(monthKey);
 
   Map<String, int> _getCategoryTotals(List<Record> records) {
     final map = <String, int>{};
-    for (var r in records) {
-      final id = r.spend_category;
-      if (id > 0 && id <= allCategories.length) {
-        final name = allCategories[id - 1]; // id → 이름
+    for (final r in records) {
+      final idx = r.spend_category;
+      if (idx > 0 && idx <= allCategories.length) {
+        final name = allCategories[idx - 1];
         map[name] = (map[name] ?? 0) + r.spendCost;
       }
     }
@@ -135,200 +138,162 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
   Map<String, int> _getEmotionCounts(List<Record> records) {
     final map = <String, int>{};
-    for (var r in records) {
-      final id = r.emotion_category;
-      if (id > 0 && id <= allEmotions.length) {
-        final name = allEmotions[id - 1]; // id → 이름
+    for (final r in records) {
+      final idx = r.emotion_category;
+      if (idx > 0 && idx <= allEmotions.length) {
+        final name = allEmotions[idx - 1];
         map[name] = (map[name] ?? 0) + 1;
       }
     }
     return map;
   }
 
-
-  List<PieChartSectionData> _buildPieSections(Map<String, int> dataMap, Map<String, Color> colorMap) {
+  List<PieChartSectionData> _buildPieSections(
+      Map<String, int> dataMap,
+      Map<String, Color> colorMap,
+      ) {
     final total = dataMap.values.fold(0, (a, b) => a + b);
     if (total == 0) return [];
-    return dataMap.entries.map((entry) {
-      final color = colorMap[entry.key] ?? Colors.grey;
+    return dataMap.entries.map((e) {
       return PieChartSectionData(
-        value: entry.value.toDouble(),
-        color: color,
-        radius: 40,
+        value: e.value.toDouble(),
+        color: colorMap[e.key] ?? Colors.grey,
         title: '',
+        radius: 40,
       );
     }).toList();
   }
 
-  Widget _buildDetailList(String title, Map<String, int> dataMap, Map<String, Color> colorMap) {
-    final totalSum = dataMap.values.fold(0, (a, b) => a + b).toDouble();
-    final entries = dataMap.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+  void _onMonthChanged(String? newKey) async {
+    if (newKey == null) return;
+    final idx = _validMonths.indexOf(newKey);
+    if (idx == -1) return;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        LayoutBuilder(builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 16) / 2;
-          return Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: entries.map((entry) {
-              final color = colorMap[entry.key] ?? Colors.grey;
-              final percent = totalSum > 0 ? (entry.value / totalSum) * 100 : 0;
-
-              return Container(
-                width: itemWidth,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Row(
-                        children: [
-                          Container(width: 10, height: 10, color: color),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              entry.key,
-                              style: const TextStyle(fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '${percent.toStringAsFixed(1)}%',
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          );
-        }),
-      ],
-    );
+    final monthStart = _parseMonthKey(newKey);
+    setState(() => _currentPageIndex = idx);
+    _pageController.jumpToPage(idx);
+    await _loadReportTextForMonth(newKey);
+    await _loadRecordsForMonth(monthStart);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_validMonths.isEmpty) {
+      return Scaffold(appBar: _appBar, body: Center(child: Text('소비 기록이 없습니다.')));
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('월간 리포트', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: _availableMonths.isEmpty
-          ? const Center(child: Text('이전 달의 소비 기록이 없습니다.'))
-          : Column(
+      appBar: _appBar,
+      body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: DropdownButton<String>(
               isExpanded: true,
-              value: _selectedMonth,
-              items: _availableMonths.map((month) {
-                final dt = DateFormat('yyyy-MM').parse(month);
-                final formatted = DateFormat('yyyy년 M월').format(dt);
-                return DropdownMenuItem<String>(
-                  value: month,
-                  child: Text('$formatted 리포트'),
-                );
+              value: _validMonths[_currentPageIndex],
+              items: _validMonths.map((monthKey) {
+                final label = ReportUtils.formatMonthlyReportTitle(monthKey);
+                return DropdownMenuItem(value: monthKey, child: Text(label));
               }).toList(),
-              onChanged: _onDropdownChanged,
+              onChanged: _onMonthChanged,
             ),
           ),
           Expanded(
             child: PageView.builder(
               controller: _pageController,
-              itemCount: _availableMonths.length,
-              reverse: false,
-              onPageChanged: _onPageChanged,
-              itemBuilder: (context, index) {
-                final month = _availableMonths[index];
-                final records = _recordsForMonth(month);
-                final categoryData = _getCategoryTotals(records);
-                final emotionData = _getEmotionCounts(records);
-
-                final dt = DateFormat('yyyy-MM').parse(month);
-                final formattedMonth = DateFormat('yyyy년 M월').format(dt);
-
-                final firstDay = DateTime(dt.year, dt.month, 1);
-                final lastDay = DateTime(dt.year, dt.month + 1, 0);
-                final formattedRange = '${DateFormat('yyyy.MM.dd').format(firstDay)} ~ ${DateFormat('yyyy.MM.dd').format(lastDay)}';
+              itemCount: _validMonths.length,
+              reverse: true,
+              onPageChanged: (idx) async {
+                final monthKey = _validMonths[idx];
+                final monthStart = _parseMonthKey(monthKey);
+                setState(() => _currentPageIndex = idx);
+                await _loadReportTextForMonth(monthKey);
+                await _loadRecordsForMonth(monthStart);
+              },
+              itemBuilder: (context, idx) {
+                final monthKey = _validMonths[idx];
+                final monthStart = _parseMonthKey(monthKey);
+                final categoryData = _getCategoryTotals(_currentMonthRecords);
+                final emotionData = _getEmotionCounts(_currentMonthRecords);
 
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$formattedMonth 소비 리포트',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            constraints: BoxConstraints(minHeight: 500),
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('lib/assets/report_receipt.png'),
+                                fit: BoxFit.fill,
+                              ),
+                            ),
+                            padding: EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  ReportUtils.formatMonthlyReportTitle(monthKey),
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  '${DateFormat('yyyy.MM.01').format(monthStart)} ~ ${DateFormat('yyyy.MM.dd').format(DateTime(monthStart.year, monthStart.month + 1, 0))}',
+                                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  _selectedReportText ?? '',
+                                  style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formattedRange,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
+                        ],
+                      ),
+                      SizedBox(height: 32),
+                      if (categoryData.isNotEmpty) ...[
+                        const Text('카테고리별 소비', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
                         SizedBox(
                           height: 200,
-                          child: categoryData.isEmpty
-                              ? const Center(child: Text('데이터 없음'))
-                              : PieChart(
+                          child: PieChart(
                             PieChartData(
                               sections: _buildPieSections(categoryData, categoryColors),
-                              sectionsSpace: 2,
                               centerSpaceRadius: 60,
+                              sectionsSpace: 2,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         _buildDetailList('카테고리별 소비 내역', categoryData, categoryColors),
-                        const SizedBox(height: 32),
+                      ],
+                      const SizedBox(height: 32),
+                      if (emotionData.isNotEmpty) ...[
+                        const Text('감정별 소비', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
                         SizedBox(
                           height: 200,
-                          child: emotionData.isEmpty
-                              ? const Center(child: Text('데이터 없음'))
-                              : PieChart(
+                          child: PieChart(
                             PieChartData(
                               sections: _buildPieSections(emotionData, emotionColors),
-                              sectionsSpace: 2,
                               centerSpaceRadius: 60,
+                              sectionsSpace: 2,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         _buildDetailList('감정별 소비 내역', emotionData, emotionColors),
                       ],
-                    ),
+                    ],
                   ),
                 );
               },
@@ -338,9 +303,63 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       ),
     );
   }
+
+  AppBar get _appBar => AppBar(
+    title: Text('월간 리포트', style: TextStyle(color: Colors.black)),
+    backgroundColor: Colors.white,
+    iconTheme: IconThemeData(color: Colors.black),
+    centerTitle: true,
+    elevation: 0,
+  );
+
+  Widget _buildDetailList(String title, Map<String, int> dataMap, Map<String, Color> colorMap) {
+    final totalSum = dataMap.values.fold(0, (a, b) => a + b).toDouble();
+    final entries = dataMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        LayoutBuilder(builder: (context, constraints) {
+          final itemWidth = (constraints.maxWidth - 16) / 2;
+          return Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: entries.map((e) {
+              final color = colorMap[e.key] ?? Colors.grey;
+              final percent = totalSum > 0 ? (e.value / totalSum) * 100 : 0;
+              return Container(
+                width: itemWidth,
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Container(width: 10, height: 10, color: color),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(e.key,
+                              style: TextStyle(fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text('${percent.toStringAsFixed(1)}%', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }),
+      ],
+    );
+  }
 }
-
-
-
-
-
