@@ -345,12 +345,12 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
               '지난달 총 소비금액: ${numberFormat.format(lastMonthTotalSpent)}원',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            const SizedBox(height: 20),
+            const Divider(height: 20),
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
-                '예산 설정 전에 한 번 더 확인해주세요.\n설정 후에는 수정이 제한돼요.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                '예산 설정 전에 한 번 더 확인해주세요. 설정 후에는 수정이 제한돼요.',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
             ),

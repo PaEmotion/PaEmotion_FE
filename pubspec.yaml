@@ -94,6 +94,8 @@ flutter:
       - lib/assets/t_hobby.jpg
       - lib/assets/paemotion_logo.png
       - lib/assets/report_receipt.png
+      - lib/assets/closed_guinea.png
+      - lib/assets/opened_guinea.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

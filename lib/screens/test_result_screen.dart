@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/test_traits_data.dart';
+import 'test_main_screen.dart';
 
 class TestResultScreen extends StatefulWidget {
   final Map<String, int> scores;
@@ -36,7 +37,10 @@ class _TestResultScreenState extends State<TestResultScreen> {
   }
 
   void _restartTest() {
-    Navigator.popUntil(context, (route) => route.isFirst);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => TestMainScreen()),
+    );
   }
 
   @override
@@ -47,88 +51,118 @@ class _TestResultScreenState extends State<TestResultScreen> {
     );
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('소비성향 테스트 결과'),
         centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.deepPurple,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text(
-              '당신의 소비 유형은?',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                '당신의 소비 유형은?',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.deepPurple,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 28),
 
-            // 이미지 표시 부분
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                trait.imagePath,
-                width: 250,
-                height: 250,
-                fit: BoxFit.cover,
+              // 이미지 + 그림자 박스
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepPurple.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset(
+                    trait.imagePath,
+                    width: 260,
+                    height: 260,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-            Text(
-              trait.title,
-              style: const TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
+              Text(
+                trait.title,
+                style: const TextStyle(
+                  fontSize: 38,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                  height: 1.1,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
-            Text(
-              trait.description,
-              style: const TextStyle(fontSize: 16, height: 1.5),
-              textAlign: TextAlign.left,
-            ),
-
-            const SizedBox(height: 40),
-
-            Text(
-              trait.summary,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                fontStyle: FontStyle.italic,
-                color: Colors.deepPurple,
+              Text(
+                trait.description,
+                style: TextStyle(
+                  fontSize: 17,
+                  height: 1.6,
+                  color: Colors.grey[800],
+                ),
+                textAlign: TextAlign.justify,
               ),
-              textAlign: TextAlign.center,
-            ),
 
-            const SizedBox(height: 48),
+              const SizedBox(height: 36),
 
-            ElevatedButton(
-              onPressed: _restartTest,
-              style: ElevatedButton.styleFrom(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                backgroundColor: Colors.deepPurple,
+              Text(
+                trait.summary,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.deepPurple,
+                ),
+                textAlign: TextAlign.center,
               ),
-              child: const Text(
-                '테스트 다시하기',
-                style: TextStyle(fontSize: 18),
+
+              const SizedBox(height: 52),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _restartTest,
+                  style: ButtonStyle(
+                    backgroundColor:
+                    MaterialStateProperty.all(Colors.deepPurple),
+                    shape: MaterialStateProperty.all(RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    )),
+                    elevation: MaterialStateProperty.all(6),
+                    shadowColor: MaterialStateProperty.all(
+                        Colors.deepPurple.withOpacity(0.5)),
+                  ),
+                  child: const Text(
+                    '테스트 다시하기',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-      backgroundColor: Colors.grey[100],
     );
   }
 }

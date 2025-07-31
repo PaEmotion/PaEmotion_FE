@@ -81,7 +81,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
       final int totalAmount = budgetData['totalAmount'] ?? 0;
       final List categoryList = budgetData['categoryBudget'];
 
-      // 예산 데이터가 있는 카테고리만 맵으로 저장
       final Map<int, int> categoryBudgets = {
         for (var item in categoryList)
           (item['spendCategoryId'] as int): (item['amount'] as int),
@@ -95,7 +94,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       int totalSpending = 0;
 
       for (var record in records) {
-        final catId = record.spend_category;  // spendCategoryId
+        final catId = record.spend_category;
         final amount = record.spendCost;
         categorySpendings[catId] = (categorySpendings[catId] ?? 0) + amount;
         totalSpending += amount;
@@ -105,13 +104,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
       final predList = response.data['예측'];
       double? prediction;
 
-
       if (predList is List && predList.isNotEmpty) {
         prediction = predList[0].toDouble();
       } else {
         prediction = null;
       }
-
 
       if (mounted) {
         setState(() {
@@ -164,200 +161,221 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spendingPercent = (_totalBudget != null &&
-        _totalSpending != null &&
-        _totalBudget! > 0)
-        ? (_totalSpending! / _totalBudget!)
-        : 0.0;
-
-    final allCatIds = _categoryNames.keys.toList()..sort();
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                (_totalBudget != null && _totalSpending != null)
-                    ? '이번 달 예산입니다.'
-                    : '예산을 설정하고\n소비를 관리해보세요',
-                style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              if (_totalBudget != null && _totalSpending != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0, left: 4.0),
-                  child: Text(
-                    '${DateTime.now().year}.${DateTime.now().month.toString().padLeft(2, '0')}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              if (_totalBudget != null && _totalSpending != null) ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 4.0),
-                  child: Text(
-                    '이번달 예산은 ${_totalBudget!.toString().replaceAllMapped(
-                      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                          (m) => '${m[1]},',
-                    )}원\n총 ${_totalSpending!.toString().replaceAllMapped(
-                      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                          (m) => '${m[1]},',
-                    )}원을 소비했어요.',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: CircularPercentIndicator(
-                    radius: 120,
-                    lineWidth: 20,
-                    percent: spendingPercent > 1.0 ? 1.0 : spendingPercent,
-                    center: Text(
-                      "${(spendingPercent * 100).toStringAsFixed(1)}%",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    progressColor:
-                    spendingPercent > 1.0 ? Colors.orangeAccent : Colors.green,
-                    backgroundColor: Colors.grey.shade300,
-                    animation: true,
-                    animationDuration: 600,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: Text(
-                    _feedbackMessage(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+
+            // 화면 크기에 따른 기본 크기 조절
+            double baseFontSize;
+            double basePadding;
+            double circleRadius;
+            double circleLineWidth;
+            double trailingIconSize;
+
+            if (width < 350) {
+              baseFontSize = 12;
+              basePadding = 8;
+              circleRadius = 80;
+              circleLineWidth = 14;
+              trailingIconSize = 12;
+            } else if (width < 600) {
+              baseFontSize = 14;
+              basePadding = 16;
+              circleRadius = 120;
+              circleLineWidth = 20;
+              trailingIconSize = 16;
+            } else {
+              baseFontSize = 18;
+              basePadding = 24;
+              circleRadius = 150;
+              circleLineWidth = 24;
+              trailingIconSize = 20;
+            }
+
+            final spendingPercent = (_totalBudget != null &&
+                _totalSpending != null &&
+                _totalBudget! > 0)
+                ? (_totalSpending! / _totalBudget!)
+                : 0.0;
+
+            final allCatIds = _categoryNames.keys.toList()..sort();
+
+            String formatNumber(int num) {
+              return num.toString().replaceAllMapped(
+                  RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+            }
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(basePadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (_totalBudget != null && _totalSpending != null)
+                        ? '이번 달 예산입니다.'
+                        : '예산을 설정하고\n소비를 관리해보세요',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: baseFontSize + 8,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
-                ),
-                if (_predictedSpending != null) ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      '다음주 지출은 ${_predictedSpending!.round().toString().replaceAllMapped(
-                        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                            (m) => '${m[1]},',
-                      )}원으로 예상됩니다.',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey,
+                  if (_totalBudget != null && _totalSpending != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4.0, left: 4.0),
+                      child: Text(
+                        '${DateTime.now().year}.${DateTime.now().month.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: baseFontSize,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      '다음주 지출 예측 정보가 아직 생성되지 않았어요.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[400],
+                  SizedBox(height: basePadding),
+                  if (_totalBudget != null && _totalSpending != null) ...[
+                    Padding(
+                      padding: EdgeInsets.only(left: 4.0),
+                      child: Text(
+                        '이번달 예산은 ${formatNumber(_totalBudget!)}원\n총 ${formatNumber(_totalSpending!)}원을 소비했어요.',
+                        style: TextStyle(fontSize: baseFontSize),
                       ),
                     ),
-                  ),
-                ],
-
-                const SizedBox(height: 40),
-
-                // 모든 카테고리의 사용내역 표시 (예산 설정 안한 카테고리까지 표시)
-                ...allCatIds.map((catId) {
-                  final catBudget = _categoryBudgets[catId] ?? 0;
-                  final catSpending = _categorySpendings[catId] ?? 0;
-                  final catPercent = catBudget > 0
-                      ? (catSpending / catBudget)
-                      : (catSpending > 0 ? 1.0 : 0.0);
-
-                  final catColor = (catPercent >= 1.0 || (catBudget == 0 && catSpending > 0))
-                      ? Colors.orange[700]!
-                      : Colors.green.withOpacity(catPercent.clamp(0.5, 1.0));
-
-
-                  return Column(
-                    children: [
-                      ListTile(
-                        title: Text(
-                          _categoryNames[catId] ?? '카테고리 $catId',
-                          style: const TextStyle(
+                    SizedBox(height: basePadding * 1.25),
+                    Center(
+                      child: CircularPercentIndicator(
+                        radius: circleRadius,
+                        lineWidth: circleLineWidth,
+                        percent: spendingPercent > 1.0 ? 1.0 : spendingPercent,
+                        center: Text(
+                          "${(spendingPercent * 100).toStringAsFixed(1)}%",
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: baseFontSize + 2,
                           ),
                         ),
-                        subtitle: Text(
-                          '예산: ${catBudget.toString().replaceAllMapped(
-                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                                (m) => '${m[1]},',
-                          )}원, 사용: ${catSpending.toString().replaceAllMapped(
-                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                                (m) => '${m[1]},',
-                          )}원',
-                        ),
-                        trailing: CircularPercentIndicator(
-                          radius: 16,
-                          lineWidth: 3,
-                          percent: catPercent.clamp(0.0, 1.0),
-                          progressColor: catColor,
-                          backgroundColor: Colors.grey.shade300,
-                          animation: true,
+                        progressColor:
+                        spendingPercent > 1.0 ? Colors.orangeAccent : Colors.green,
+                        backgroundColor: Colors.grey.shade300,
+                        animation: true,
+                        animationDuration: 600,
+                      ),
+                    ),
+                    SizedBox(height: basePadding * 1.5),
+                    Center(
+                      child: Text(
+                        _feedbackMessage(),
+                        style: TextStyle(
+                          fontSize: baseFontSize,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
                         ),
                       ),
-                      const Divider(),
+                    ),
+                    if (_predictedSpending != null) ...[
+                      SizedBox(height: basePadding / 2),
+                      Center(
+                        child: Text(
+                          '다음주 지출은 ${formatNumber(_predictedSpending!.round())}원으로 예상됩니다.',
+                          style: TextStyle(
+                            fontSize: baseFontSize - 2,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(height: basePadding / 2),
+                      Center(
+                        child: Text(
+                          '다음주 지출 예측 정보가 아직 생성되지 않았어요.',
+                          style: TextStyle(
+                            fontSize: baseFontSize - 2,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ),
                     ],
-                  );
-                }).toList(),
-              ],
-              if (_totalBudget == null) ...[
-                const SizedBox(height: 450),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    SizedBox(height: basePadding * 2),
+
+                    ...allCatIds.map((catId) {
+                      final catBudget = _categoryBudgets[catId] ?? 0;
+                      final catSpending = _categorySpendings[catId] ?? 0;
+                      final catPercent = catBudget > 0
+                          ? (catSpending / catBudget)
+                          : (catSpending > 0 ? 1.0 : 0.0);
+
+                      final catColor = (catPercent >= 1.0 || (catBudget == 0 && catSpending > 0))
+                          ? Colors.orange[700]!
+                          : Colors.green.withOpacity(catPercent.clamp(0.5, 1.0));
+
+                      return Column(
+                        children: [
+                          ListTile(
+                            title: Text(
+                              _categoryNames[catId] ?? '카테고리 $catId',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: baseFontSize,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '예산: ${formatNumber(catBudget)}원, 사용: ${formatNumber(catSpending)}원',
+                              style: TextStyle(fontSize: baseFontSize - 2),
+                            ),
+                            trailing: CircularPercentIndicator(
+                              radius: trailingIconSize,
+                              lineWidth: 3,
+                              percent: catPercent.clamp(0.0, 1.0),
+                              progressColor: catColor,
+                              backgroundColor: Colors.grey.shade300,
+                              animation: true,
+                            ),
+                          ),
+                          Divider(),
+                        ],
+                      );
+                    }).toList(),
+                  ],
+                  if (_totalBudget == null) ...[
+                    SizedBox(height: 450),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const BudgetCreatingScreen()),
+                          ).then((value) {
+                            if (value == true) _loadData();
+                          });
+                        },
+                        child: Text(
+                          '이번달 예산 설정하기',
+                          style: TextStyle(fontSize: baseFontSize),
+                        ),
                       ),
-                      elevation: 0,
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const BudgetCreatingScreen()),
-                      ).then((value) {
-                        if (value == true) _loadData();
-                      });
-                    },
-                    child: const Text(
-                      '이번달 예산 설정하기',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 60),
-              ],
-            ],
-          ),
+                    SizedBox(height: 60),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

@@ -4,6 +4,7 @@ class User {
   final String name;
   final String nickname;
   final String accessToken;
+  final String refreshToken;
 
   User({
     required this.id,
@@ -11,6 +12,7 @@ class User {
     required this.name,
     required this.nickname,
     required this.accessToken,
+    required this.refreshToken,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class User {
       name: json['name'],
       nickname: json['nickname'],
       accessToken: json['access_token'],
+      refreshToken: json['refresh_token'],
     );
   }
 
@@ -30,6 +33,7 @@ class User {
       'name': name,
       'nickname': nickname,
       'access_token': accessToken,
+      'refresh_token': refreshToken,
     };
   }
 }

@@ -33,14 +33,14 @@ class _ReportScreenState extends State<ReportScreen>  {
 
     final user = User.fromJson(jsonDecode(userJson));
 
-    // 임시 전체 기간 설정 (2025년 4월 1일 ~ 2025년 7월 31일)
+    // 임시 전체 기간 설정, 출시 임박 시 변경 예정 (2025년 4월 1일 ~ 2025년 7월 31일)
     final startDate = DateTime(2025, 4, 1);
     final endDate = DateTime(2025, 7, 31);
     final userId = user.id;
 
 
-    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate); // "2025-04-01"
-    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);     // "2025-07-31"
+    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
 
     final reports = await ReportUtils.fetchReportsFromApi(
       userId: userId,
