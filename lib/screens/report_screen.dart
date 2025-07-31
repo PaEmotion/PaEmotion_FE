@@ -39,8 +39,8 @@ class _ReportScreenState extends State<ReportScreen>  {
     final userId = user.id;
 
 
-    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate); 
-    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);     
+    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
 
     final reports = await ReportUtils.fetchReportsFromApi(
       userId: userId,
