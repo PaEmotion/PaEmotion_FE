@@ -20,7 +20,7 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  String? _name = '사용자';
+  String? _nickname = '사용자';
   bool _isLoading = true;
 
   @override
@@ -34,7 +34,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final jsonString = prefs.getString('user');
 
     if (jsonString == null) {
-      // 유저 정보 자체가 없으면 이름 기본값 유지
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -44,7 +43,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     final userMap = jsonDecode(jsonString);
     final user = User.fromJson(userMap);
-    final accessToken = user.accessToken;  // 토큰은 무조건 있다고 가정
+    final accessToken = user.accessToken;
 
     try {
       final dio = Dio();
@@ -57,10 +56,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final nameFromApi = data['name'] as String?;
+        final nicknameFromApi = data['nickname'] as String?;
         if (!mounted) return;
         setState(() {
-          _name = (nameFromApi != null && nameFromApi.isNotEmpty) ? nameFromApi : _name;
+          _nickname = (nicknameFromApi != null && nicknameFromApi.isNotEmpty) ? nicknameFromApi : _nickname;
           _isLoading = false;
         });
       } else {
@@ -77,7 +76,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-
   void _goToLogin() {
     if (!mounted) return;
     // 유저 데이터 및 토큰 클리어
@@ -91,8 +89,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // 모든 SharedPreferences 데이터 삭제
-    await UserStorage.clearUser(); // (만약 추가 저장소 사용하는 경우도 대비)
+    await prefs.clear();
+    await UserStorage.clearUser();
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -115,24 +113,38 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '안녕하세요, ${_name ?? '사용자'}님!',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // 닉네임 영역
+            Row(
+              children: [
+                const Icon(
+                  Icons.account_circle,
+                  size: 60,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _nickname ?? '사용자',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: '닉네임 수정',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MpEditScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 30),
+
             Text('개인정보', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('개인정보 수정'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MpEditScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
+
             ListTile(
               leading: const Icon(Icons.lock_reset),
               title: const Text('비밀번호 변경'),
@@ -144,6 +156,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               },
               trailing: const Icon(Icons.chevron_right),
             ),
+
             const Divider(height: 40),
             Text('기타', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
@@ -177,3 +190,4 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 }
+

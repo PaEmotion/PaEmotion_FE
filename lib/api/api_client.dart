@@ -10,7 +10,7 @@ class ApiClient {
   // 메인 Dio
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'https://e9dde3dc31d4.ngrok-free.app',
+      baseUrl: 'https://5f21f1fcbd69.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
@@ -20,7 +20,7 @@ class ApiClient {
   // refresh 전용 Dio (인터셉터 없음)
   static final Dio _refreshDio = Dio(
     BaseOptions(
-      baseUrl: 'https://e9dde3dc31d4.ngrok-free.app',
+      baseUrl: 'https://5f21f1fcbd69.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
@@ -29,20 +29,19 @@ class ApiClient {
 
   static const String _refreshPath = '/users/token/refresh';
 
-  /// 공개(인증 불필요) 엔드포인트만 정리. 나머지는 모두 토큰 부착/검사.
-  static const List<String> _publicPaths = <String>[
-    '/users/login',
-    '/users/register',
-    _refreshPath,
-    // 공개 목록들 추가 필요 시 여기에...
-    '/challenges', // 목록이 공개면 유지
-    '/records',    // 네가 말한 대로 공개라면 유지
+  // 토큰 붙여야 하는 private path
+  static const List<String> _privatePaths = [
+    '/users/me',
+    '/challenges/join',
+    '/challenges/create',
+    '/challenges/current',
+    '/users/nickname',
   ];
 
-  // 동시 refresh 단일화
+  // 동시 refresh 단일화 처리용 Completer
   static Completer<String?>? _refreshCompleter;
 
-  /// 앱 시작 시 한 번 호출해서 액세스 토큰이 만료/임박이면 선제적으로 refresh
+  /// 앱 시작 시 액세스 토큰 만료 임박 감지 => 선제 refresh
   static Future<void> ensureValidAccessToken({Duration skew = const Duration(minutes: 2)}) async {
     final user = await UserStorage.loadUser();
     if (user == null || user.accessToken.isEmpty || user.refreshToken.isEmpty) {
@@ -69,7 +68,7 @@ class ApiClient {
         }
       } catch (e) {
         debugPrint('❌ Pre-emptive refresh failed: $e');
-        // 실패해도 여기선 바로 로그아웃하지 않고, 인터셉터 401 핸들링에 맡김
+        // 실패해도 인터셉터 401 처리에 맡김
       }
     } else {
       debugPrint('✅ Access token still valid at app start (no refresh needed)');
@@ -85,17 +84,20 @@ class ApiClient {
           debugPrint('➡️ Request: [${options.method}] ${options.uri}');
           final path = options.uri.path;
 
-          final isPublic = _publicPaths.any((p) => path.startsWith(p));
-          final hasAuthHeader = (options.headers['Authorization'] ?? '')
-              .toString()
-              .startsWith('Bearer ');
-
-          if (isPublic) {
-            debugPrint('ℹ️ Public endpoint, no Authorization for $path');
+          // refresh 토큰 요청일 경우 Authorization 없음
+          if (path == _refreshPath) {
             return handler.next(options);
           }
 
-          // 비공개(인증 필요) 요청: 토큰 검사 및 선제 refresh
+          // privatePaths에 포함되는지 검사
+          final requiresAuth = _privatePaths.any((p) => path.startsWith(p));
+
+          if (!requiresAuth) {
+            // privatePath가 아니면 Authorization 없이 진행
+            debugPrint('ℹ️ Not private path, no Authorization added for $path');
+            return handler.next(options);
+          }
+
           final user = await UserStorage.loadUser();
 
           if (user == null || user.accessToken.isEmpty) {
@@ -104,7 +106,6 @@ class ApiClient {
           }
 
           try {
-            // 만료 임박이면 미리 refresh (중복 방지됨)
             if (_isAccessTokenExpiringSoon(user.accessToken)) {
               debugPrint('⏱️ Access token expiring soon before request $path → refreshing...');
               final newAccess = await _refreshAccessToken(user.refreshToken);
@@ -121,21 +122,16 @@ class ApiClient {
                 options.headers['Authorization'] = 'Bearer $newAccess';
                 debugPrint('🛡️ Added refreshed Authorization header for $path');
               } else {
-                // 새 토큰 없음 → 기존 토큰으로 보냄(401은 onError에서 처리)
                 options.headers['Authorization'] = 'Bearer ${user.accessToken}';
                 debugPrint('🛡️ Added current Authorization header (refresh returned empty) for $path');
               }
             } else {
-              // 아직 유효 → 현 토큰 사용
-              if (!hasAuthHeader) {
+              if (!(options.headers['Authorization']?.toString().startsWith('Bearer ') ?? false)) {
                 options.headers['Authorization'] = 'Bearer ${user.accessToken}';
                 debugPrint('🛡️ Added Authorization header for $path');
-              } else {
-                debugPrint('🛡️ Authorization header already present for $path (kept as-is)');
               }
             }
           } catch (e) {
-            // 선제 refresh 실패 → 기존 토큰으로 시도(401은 onError에서 처리)
             options.headers['Authorization'] = 'Bearer ${user.accessToken}';
             debugPrint('⚠️ Pre-request refresh failed, sending with current token for $path: $e');
           }
@@ -151,28 +147,22 @@ class ApiClient {
         onError: (DioException e, ErrorInterceptorHandler handler) async {
           debugPrint('❌ Error: [${e.response?.statusCode}] ${e.requestOptions.uri}');
 
-          // 401만 여기서 다룸 (404 등은 통과)
           if (e.response?.statusCode != 401) {
             return handler.next(e);
           }
 
           final req = e.requestOptions;
           final path = Uri.parse(req.uri.toString()).path;
-          debugPrint('🔄 Handling 401 for path: $path');
 
-          // refresh 자체 401은 재귀 방지
-          if (path.startsWith(_refreshPath)) {
+          // refresh 요청에서 401 발생 시 강제 로그아웃
+          if (path == _refreshPath) {
             debugPrint('🚫 Refresh endpoint 401 → forcing logout');
             await _forceLogout(navigatorKey.currentContext);
             return handler.next(e);
           }
 
-          // 원 요청에 이미 Authorization 있었는지
-          final hadAuth = (req.headers['Authorization'] ?? '')
-              .toString()
-              .startsWith('Bearer ');
+          final hadAuth = (req.headers['Authorization'] ?? '').toString().startsWith('Bearer ');
 
-          // Authorization 없던 401이면 한 번 주입 재시도
           if (!hadAuth) {
             final u = await UserStorage.loadUser();
             if (u != null && u.accessToken.isNotEmpty) {
@@ -187,7 +177,6 @@ class ApiClient {
             }
           }
 
-          // 여기부터 refresh 시도
           final user = await UserStorage.loadUser();
           final refreshToken = user?.refreshToken ?? '';
           if (user == null || refreshToken.isEmpty) {
@@ -206,7 +195,6 @@ class ApiClient {
               return handler.next(e);
             }
 
-            // 저장 갱신
             final updatedUser = User(
               id: user.id,
               email: user.email,
@@ -264,12 +252,12 @@ class ApiClient {
     }
   }
 
-  /// 액세스 토큰이 만료됐거나, `skew` 이내로 임박했는지 판정
+  /// 액세스 토큰 만료 임박 여부 판단
   static bool _isAccessTokenExpiringSoon(String accessToken,
       {Duration skew = const Duration(minutes: 2)}) {
     try {
       final exp = _getJwtExpiry(accessToken);
-      if (exp == null) return false; // exp 없는 토큰이면 판단 불가 → false
+      if (exp == null) return false;
       final now = DateTime.now().toUtc();
       return exp.isBefore(now.add(skew));
     } catch (_) {
@@ -277,9 +265,8 @@ class ApiClient {
     }
   }
 
-  /// JWT exp(초) → DateTime(UTC)로 파싱
+  /// JWT 토큰 만료 시간 추출
   static DateTime? _getJwtExpiry(String token) {
-    // JWT 형식: header.payload.signature
     final parts = token.split('.');
     if (parts.length != 3) return null;
     final payload = _decodeBase64Url(parts[1]);
@@ -315,8 +302,7 @@ class ApiClient {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context)
-                    .pushNamedAndRemoveUntil('/login', (route) => false);
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
               },
               child: const Text('확인'),
             ),
