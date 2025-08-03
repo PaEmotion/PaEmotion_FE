@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
+import '../api/api_client.dart';
 import '../models/user.dart';
 import '../utils/user_storage.dart';
-import 'mp_challenge_list_screen.dart';
 import 'mp_edit_screen.dart';
 import 'mp_pwreset_screen.dart';
 import 'test_main_screen.dart';
@@ -20,43 +20,82 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  String? _name = '사용자';
+  String? _nickname = '사용자';
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _fetchUserInfo();
   }
 
-  Future<void> _loadUserName() async {
+  Future<void> _fetchUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString('user');
-    if (jsonString != null) {
-      final userMap = jsonDecode(jsonString);
-      final user = User.fromJson(userMap);
+
+    if (jsonString == null) {
+      if (!mounted) return;
       setState(() {
-        _name = user.name.isNotEmpty ? user.name : '사용자';
+        _isLoading = false;
       });
-    } else {
+      return;
+    }
+
+    final userMap = jsonDecode(jsonString);
+    final user = User.fromJson(userMap);
+    final accessToken = user.accessToken;
+
+    try {
+      final dio = Dio();
+      final response = await ApiClient.dio.get(
+        '/users/me',
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final nicknameFromApi = data['nickname'] as String?;
+        if (!mounted) return;
+        setState(() {
+          _nickname = (nicknameFromApi != null && nicknameFromApi.isNotEmpty) ? nicknameFromApi : _nickname;
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _name = '사용자';
+        _isLoading = false;
       });
     }
   }
 
+  void _goToLogin() {
+    if (!mounted) return;
+    // 유저 데이터 및 토큰 클리어
+    UserStorage.clearUser();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+    );
+  }
+
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('user');
-
-    // SharedPreference에 저장된 유저 정보 모두 삭제
+    await prefs.clear();
     await UserStorage.clearUser();
 
     if (!mounted) return;
-
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,
     );
   }
@@ -67,30 +106,45 @@ class _MyPageScreenState extends State<MyPageScreen> {
       appBar: AppBar(
         title: const Text('마이페이지'),
       ),
-      body: Padding(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '안녕하세요, ${_name ?? '사용자'}님!',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // 닉네임 영역
+            Row(
+              children: [
+                const Icon(
+                  Icons.account_circle,
+                  size: 60,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _nickname ?? '사용자',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: '닉네임 수정',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MpEditScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 30),
 
             Text('개인정보', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('개인정보 수정'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MpEditScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
+
             ListTile(
               leading: const Icon(Icons.lock_reset),
               title: const Text('비밀번호 변경'),
@@ -104,22 +158,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
 
             const Divider(height: 40),
-
-            Text('과거 챌린지', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('챌린지 관리'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MpChallengeListScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
-            const Divider(height: 40),
-
             Text('기타', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             ListTile(
@@ -133,9 +171,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               },
               trailing: const Icon(Icons.chevron_right),
             ),
-
             const Spacer(),
-
             Center(
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.logout),
@@ -154,6 +190,4 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 }
-
-
 
