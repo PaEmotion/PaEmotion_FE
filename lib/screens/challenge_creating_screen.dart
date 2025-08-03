@@ -82,7 +82,6 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
     final int? createdChallengeId = data['challengeId'];
     final String message = data['message'] ?? '챌린지가 성공적으로 생성되었습니다!';
 
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -91,43 +90,81 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
     );
   }
 
+  // 반응형 너비
+  double rWidth(double base) {
+    final w = MediaQuery.of(context).size.width;
+    return base * (w / 390);
+  }
 
+  // 반응형 높이
+  double rHeight(double base) {
+    final h = MediaQuery.of(context).size.height;
+    return base * (h / 844);
+  }
+
+  // 반응형 폰트 크기
+  double rFont(double base) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final w = MediaQuery.of(context).size.width;
+    return base * scale * (w / 390);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = rWidth(20);
+    final spacingSmall = rHeight(8);
+    final spacingMedium = rHeight(12);
+    final spacingLarge = rHeight(24);
+    final buttonHeight = rHeight(50);
+    final borderRadius = rWidth(12);
+    final buttonRadius = rWidth(8);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('챌린지 생성하기'),
+        title: Text(
+          '챌린지 생성하기',
+          style: TextStyle(fontSize: rFont(18), fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        elevation: 1,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(horizontalPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            SizedBox(height: spacingMedium),
+            Text(
               '챌린지 유형을 선택해주세요.',
-              style: TextStyle(fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: rFont(16),
+                color: Colors.black87,
+              ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacingSmall),
             Row(
               children: [
                 _buildRadio('공개', 'public', _challengeType, (val) {
                   setState(() => _challengeType = val);
                 }),
-                const SizedBox(width: 16),
+                SizedBox(width: rWidth(16)),
                 _buildRadio('비공개 (프라이빗)', 'private', _challengeType, (val) {
                   setState(() => _challengeType = val);
                 }),
               ],
             ),
-            const SizedBox(height: 24),
-            const Text(
+            SizedBox(height: spacingLarge),
+            Text(
               '챌린지의 컨셉을 선택해주세요.',
-              style: TextStyle(fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: rFont(16),
+                color: Colors.black87,
+              ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacingSmall),
             _buildRadioWithDesc(
               '기니피그 밥 주기',
               'feed',
@@ -138,8 +175,11 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
                   _concept = val;
                 });
               },
+              fontSizeLabel: rFont(16),
+              fontSizeDesc: rFont(12),
+              descPadding: rWidth(40),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacingSmall),
             _buildRadioWithDesc(
               '기니피그 밥 지켜주기',
               'protect',
@@ -150,21 +190,27 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
                   _concept = val;
                 });
               },
+              fontSizeLabel: rFont(16),
+              fontSizeDesc: rFont(12),
+              descPadding: rWidth(40),
             ),
-            if (_challengeType != null && _concept != null) _buildDetailsForm(),
-            const SizedBox(height: 40),
+            if (_challengeType != null && _concept != null) _buildDetailsForm(borderRadius, spacingLarge, spacingSmall),
+            SizedBox(height: rHeight(40)),
             if (_challengeType != null && _concept != null)
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: buttonHeight,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(buttonRadius)),
                   ),
                   onPressed: _handleCreate,
-                  child: const Text('챌린지 생성하기', style: TextStyle(fontSize: 16)),
+                  child: Text(
+                    '챌린지 생성하기',
+                    style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
           ],
@@ -173,21 +219,35 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
     );
   }
 
-  Widget _buildRadio(String label, String value, String? groupValue, ValueChanged<String?> onChanged) {
+  Widget _buildRadio(
+      String label,
+      String value,
+      String? groupValue,
+      ValueChanged<String?> onChanged, {
+        double fontSize = 16,
+      }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Radio<String>(value: value, groupValue: groupValue, onChanged: onChanged),
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
         ),
       ],
     );
   }
 
-  Widget _buildRadioWithDesc(String label, String value, String description,
-      String? groupValue, ValueChanged<String?> onChanged) {
+  Widget _buildRadioWithDesc(
+      String label,
+      String value,
+      String description,
+      String? groupValue,
+      ValueChanged<String?> onChanged, {
+        double fontSizeLabel = 16,
+        double fontSizeDesc = 12,
+        double descPadding = 40,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -196,59 +256,64 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
             Radio<String>(value: value, groupValue: groupValue, onChanged: onChanged),
             Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSizeLabel),
             ),
           ],
         ),
         Padding(
-          padding: const EdgeInsets.only(left: 40),
-          child: Text(description, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          padding: EdgeInsets.only(left: descPadding),
+          child: Text(description, style: TextStyle(fontSize: fontSizeDesc, color: Colors.black54)),
         ),
       ],
     );
   }
 
-  Widget _buildDetailsForm() {
+  Widget _buildDetailsForm(double borderRadius, double spacingLarge, double spacingSmall) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 24),
-        const Text('챌린지 제목을 입력해주세요.'),
-        const SizedBox(height: 8),
+        SizedBox(height: spacingLarge),
+        Text(
+          '챌린지 제목을 입력해주세요.',
+          style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: spacingSmall),
         TextField(
           controller: _titleController,
           maxLength: 30,
           decoration: InputDecoration(
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(borderRadius),
               borderSide: BorderSide(
                 color: Colors.grey.shade400,
                 width: 3.0,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(borderRadius),
               borderSide: BorderSide(
                 color: Colors.grey.shade600,
                 width: 3.0,
               ),
             ),
             hintText: '예: 주간 감정소비 조절하기',
+            contentPadding: EdgeInsets.symmetric(horizontal: rWidth(12), vertical: rHeight(14)),
           ),
+          style: TextStyle(fontSize: rFont(16)),
         ),
-
-        const SizedBox(height: 24),
-        const Text('챌린지의 목표를 입력해주세요.'),
-        const SizedBox(height: 12),
-
+        SizedBox(height: spacingLarge),
+        Text(
+          '챌린지의 목표를 입력해주세요.',
+          style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: spacingSmall),
         Text(
           _concept == 'feed'
               ? '긍정적 감정으로 인한 소비를'
               : '부정적 감정으로 인한 소비를',
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
+          style: TextStyle(fontSize: rFont(16), color: Colors.black87),
         ),
-
-        const SizedBox(height: 12),
+        SizedBox(height: spacingSmall),
         Row(
           children: [
             Flexible(
@@ -257,20 +322,20 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
                 controller: _countController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly, // 숫자만 입력 허용
+                  FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(horizontal: rWidth(12), vertical: rHeight(14)),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(borderRadius),
                     borderSide: BorderSide(
                       color: Colors.grey.shade400,
                       width: 1.8,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(borderRadius),
                     borderSide: BorderSide(
                       color: Colors.black87,
                       width: 2.0,
@@ -278,44 +343,51 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
                   ),
                   hintText: '숫자',
                 ),
+                style: TextStyle(fontSize: rFont(16)),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: rWidth(8)),
             Flexible(
               flex: 5,
-              child: Text(_concept == 'feed' ? '개 하기' : '개 이하로 하기'),
+              child: Text(
+                _concept == 'feed' ? '개 하기' : '개 이하로 하기',
+                style: TextStyle(fontSize: rFont(16)),
+              ),
             ),
           ],
         ),
-
         if (_challengeType == 'private') ...[
-          const SizedBox(height: 24),
-          const Text('챌린지 입장 비밀번호를 지정해주세요'),
-          const SizedBox(height: 8),
+          SizedBox(height: spacingLarge),
+          Text(
+            '챌린지 입장 비밀번호를 지정해주세요',
+            style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: spacingSmall),
           TextField(
             controller: _passwordController,
             obscureText: true,
             decoration: InputDecoration(
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(borderRadius),
                 borderSide: BorderSide(
                   color: Colors.grey.shade400,
                   width: 1.8,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(borderRadius),
                 borderSide: BorderSide(
                   color: Colors.black87,
                   width: 2.0,
                 ),
               ),
               hintText: '영문, 숫자, 특수문자 포함 8자 이상',
+              contentPadding: EdgeInsets.symmetric(horizontal: rWidth(12), vertical: rHeight(14)),
             ),
+            style: TextStyle(fontSize: rFont(16)),
           ),
         ],
       ],
     );
   }
-
 }
