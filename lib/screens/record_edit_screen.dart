@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:dio/dio.dart';
 import '../models/record.dart';
-import '../api/api_client.dart';  // ApiClient.dio 사용
+import '../api/api_client.dart';
 
 const Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -49,7 +48,7 @@ class RecordEditScreen extends StatefulWidget {
 class _RecordEditScreenState extends State<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  late String _selectedCategory; // Int -> String 문자열
+  late String _selectedCategory;
   late TextEditingController _itemController;
   late TextEditingController _amountController;
   late String _selectedEmotion;
@@ -69,7 +68,8 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     _selectedCategory = categoryMap[widget.record.spend_category] ?? '';
 
     _itemController = TextEditingController(text: widget.record.spendItem);
-    _amountController = TextEditingController(text: widget.record.spendCost.toString());
+    _amountController =
+        TextEditingController(text: widget.record.spendCost.toString());
 
     _selectedEmotion = emotionMap[widget.record.emotion_category] ?? '';
 
@@ -107,7 +107,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
 
     try {
       final response = await ApiClient.dio.put(
-        '/records/edit/${widget.record.spendId}',
+        '/records/me/${widget.record.spendId}',
         data: {
           "spendItem": _itemController.text.trim(),
           "spendCost": int.parse(_amountController.text.trim()),
@@ -156,7 +156,8 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     setState(() => _isDeleting = true);
 
     try {
-      final response = await ApiClient.dio.delete('/records/delete/${widget.record.spendId}');
+      final response =
+      await ApiClient.dio.delete('/records/me/${widget.record.spendId}');
 
       if (response.statusCode == 200) {
         Navigator.pop(context, true);
@@ -174,41 +175,83 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     }
   }
 
+  double _responsiveFont(double base, BuildContext context) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = base * scale;
+    return computed.clamp(base * 0.9, base * 1.3);
+  }
+
+  EdgeInsets _formPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final horizontal = width < 360 ? 12.0 : 20.0;
+    return EdgeInsets.symmetric(horizontal: horizontal, vertical: 12);
+  }
+
+  Size _buttonSize(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return Size(double.infinity, width < 360 ? 48 : 56);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final recordDateStr = DateFormat('yyyy년 M월 d일').format(DateTime.parse(widget.record.spendDate));
+    final recordDateStr =
+    DateFormat('yyyy년 M월 d일').format(DateTime.parse(widget.record.spendDate));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('소비 기록 수정하기'),
+        title: Text(
+          '소비 기록 수정하기',
+          style: TextStyle(
+            fontSize: _responsiveFont(18, context),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        toolbarHeight: 56,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: _formPadding(context),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              Text('기록 일자: $recordDateStr',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-
-              if (!_isToday)
-                const Padding(
-                  padding: EdgeInsets.only(top: 12, bottom: 4),
-                  child: Text(
-                    '※ 과거 기록은 수정하거나 삭제할 수 없습니다.',
-                    style: TextStyle(color: Colors.red, fontSize: 14),
+              Text(
+                '기록 일자: $recordDateStr',
+                style: TextStyle(
+                  fontSize: _responsiveFont(16, context),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (!_isToday) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '※ 과거 기록은 수정하거나 삭제할 수 없습니다.',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: _responsiveFont(14, context),
                   ),
                 ),
-
-              const SizedBox(height: 16),
+              ],
+              SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '무엇을 소비했나요? (카테고리)',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                 ),
                 items: _categories
-                    .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                    .map((cat) => DropdownMenuItem(
+                  value: cat,
+                  child: Text(
+                    cat,
+                    style: TextStyle(fontSize: _responsiveFont(14, context)),
+                  ),
+                ))
                     .toList(),
                 onChanged: _isToday
                     ? (value) => setState(() {
@@ -217,25 +260,40 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                     : null,
                 validator: (value) =>
                 value == null || value.isEmpty ? '카테고리를 선택해주세요.' : null,
+                style: TextStyle(fontSize: _responsiveFont(14, context), color: Colors.black),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _itemController,
                 enabled: _isToday,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '품목 이름',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                 ),
-                validator: (value) =>
-                value == null || value.trim().isEmpty ? '품목 이름을 입력해주세요.' : null,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? '품목 이름을 입력해주세요.'
+                    : null,
+                style: TextStyle(fontSize: _responsiveFont(14, context)),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
                 enabled: _isToday,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '금액',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -244,16 +302,29 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                   if (number == null || number <= 0) return '유효한 금액을 입력해주세요.';
                   return null;
                 },
+                style: TextStyle(fontSize: _responsiveFont(14, context)),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedEmotion,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '어떤 감정이었나요?',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                 ),
                 items: _emotions
-                    .map((emotion) => DropdownMenuItem(value: emotion, child: Text(emotion)))
+                    .map((emotion) => DropdownMenuItem(
+                  value: emotion,
+                  child: Text(
+                    emotion,
+                    style: TextStyle(fontSize: _responsiveFont(14, context)),
+                  ),
+                ))
                     .toList(),
                 onChanged: _isToday
                     ? (value) => setState(() {
@@ -262,38 +333,72 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
                     : null,
                 validator: (value) =>
                 value == null || value.isEmpty ? '감정을 선택해주세요.' : null,
+                style: TextStyle(fontSize: _responsiveFont(14, context), color: Colors.black),
               ),
-              const SizedBox(height: 32),
-
-              ElevatedButton(
-                onPressed: _isToday && !_isSaving ? _saveRecord : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                  '수정하기',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              SizedBox(height: 32),
+              SizedBox(
+                width: _buttonSize(context).width,
+                height: _buttonSize(context).height,
+                child: ElevatedButton(
+                  onPressed: _isToday && !_isSaving ? _saveRecord : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : Text(
+                    '수정하기',
+                    style: TextStyle(
+                      fontSize: _responsiveFont(18, context),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: _isToday && !_isDeleting ? _confirmDelete : null,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
-                ),
-                child: _isDeleting
-                    ? const CircularProgressIndicator(color: Colors.red)
-                    : const Text(
-                  '삭제하기',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+              SizedBox(height: 16),
+              SizedBox(
+                width: _buttonSize(context).width,
+                height: _buttonSize(context).height,
+                child: OutlinedButton(
+                  onPressed: _isToday && !_isDeleting ? _confirmDelete : null,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                  child: _isDeleting
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.red,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : Text(
+                    '삭제하기',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: _responsiveFont(16, context),
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -301,4 +406,3 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
     );
   }
 }
-

@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../api/api_client.dart';
-import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
-import '../models/user.dart';
 import 'report_screen.dart';
 import 'budget_screen.dart';
 import 'challenge_screen.dart';
@@ -84,7 +80,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   List<Record> _todaysRecords = [];
-  String _username = '.'; // 기본값
+  String _username = '사용자'; // 기본값
   String _randomGreeting = '';
 
   final List<String> _greetingMessages = [
@@ -123,11 +119,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await ApiClient.dio.get('/users/me');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        final name = data['name'] as String? ?? '사용자님';
+        final body = response.data;
+        final data = body['data'] ?? {};
+        final name = data['name'] as String? ?? '사용자';
         if (!mounted) return;
         setState(() {
-          _username = name.isNotEmpty ? name : '사용자님';
+          _username = name.isNotEmpty ? name : '사용자';
         });
       }
     } catch (e) {
@@ -138,24 +135,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Future<void> _loadTodayRecords() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-    if (jsonString == null) {
-      setState(() {
-        _todaysRecords = [];
-      });
-      return;
-    }
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    final userId = user.id;
-
     try {
       final today = DateTime.now();
       final tomorrow = today.add(const Duration(days: 1));
 
       final response = await ApiClient.dio.get(
-        '/records/$userId',
+        '/records/me',
         queryParameters: {
           'startDate': DateFormat('yyyy-MM-dd').format(today),
           'endDate': DateFormat('yyyy-MM-dd').format(tomorrow),
