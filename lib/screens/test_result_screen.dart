@@ -39,8 +39,36 @@ class _TestResultScreenState extends State<TestResultScreen> {
   void _restartTest() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => TestMainScreen()),
+      MaterialPageRoute(builder: (context) => const TestMainScreen()),
     );
+  }
+
+  double _responsiveFontSize(BuildContext context, double baseSize) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = baseSize * scale;
+    return computed.clamp(baseSize * 0.8, baseSize * 1.5);
+  }
+
+  double _responsiveWidth(BuildContext context, double baseWidth) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return baseWidth * 0.7;
+    if (width < 480) return baseWidth * 0.85;
+    if (width > 700) return baseWidth * 1.1;
+    return baseWidth;
+  }
+
+  EdgeInsets _responsivePadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 20);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 24, vertical: 32);
+    return const EdgeInsets.symmetric(horizontal: 28, vertical: 36);
+  }
+
+  double _responsiveButtonHeight(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 44;
+    if (width < 600) return 52;
+    return 60;
   }
 
   @override
@@ -49,6 +77,13 @@ class _TestResultScreenState extends State<TestResultScreen> {
           (t) => t.key == topTraitKey,
       orElse: () => traitInfos.last,
     );
+
+    final padding = _responsivePadding(context);
+    final imageSize = _responsiveWidth(context, 260);
+    final titleFontSize = _responsiveFontSize(context, 30);
+    final descFontSize = _responsiveFontSize(context, 15);
+    final summaryFontSize = _responsiveFontSize(context, 20);
+    final buttonHeight = _responsiveButtonHeight(context);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -60,20 +95,20 @@ class _TestResultScreenState extends State<TestResultScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          padding: padding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 '당신의 소비 유형은?',
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: _responsiveFontSize(context, 24),
                   fontWeight: FontWeight.w700,
                   color: Colors.deepPurple,
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: padding.vertical),
 
               // 이미지 + 그림자 박스
               Container(
@@ -91,19 +126,18 @@ class _TestResultScreenState extends State<TestResultScreen> {
                   borderRadius: BorderRadius.circular(18),
                   child: Image.asset(
                     trait.imagePath,
-                    width: 260,
-                    height: 260,
+                    width: imageSize,
+                    height: imageSize,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
-
-              const SizedBox(height: 28),
+              SizedBox(height: padding.vertical),
 
               Text(
                 trait.title,
-                style: const TextStyle(
-                  fontSize: 38,
+                style: TextStyle(
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.bold,
                   color: Colors.deepPurple,
                   height: 1.1,
@@ -111,24 +145,24 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: padding.vertical * 0.85),
 
               Text(
                 trait.description,
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: descFontSize,
                   height: 1.6,
                   color: Colors.grey[800],
                 ),
-                textAlign: TextAlign.justify,
+                textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 36),
+              SizedBox(height: padding.vertical * 1.2),
 
               Text(
                 trait.summary,
-                style: const TextStyle(
-                  fontSize: 20,
+                style: TextStyle(
+                  fontSize: summaryFontSize,
                   fontWeight: FontWeight.w600,
                   fontStyle: FontStyle.italic,
                   color: Colors.deepPurple,
@@ -136,11 +170,11 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 52),
+              SizedBox(height: padding.vertical * 1.8),
 
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: buttonHeight,
                 child: ElevatedButton(
                   onPressed: _restartTest,
                   style: ButtonStyle(
@@ -153,9 +187,12 @@ class _TestResultScreenState extends State<TestResultScreen> {
                     shadowColor: MaterialStateProperty.all(
                         Colors.deepPurple.withOpacity(0.5)),
                   ),
-                  child: const Text(
+                  child: Text(
                     '테스트 다시하기',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: summaryFontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
