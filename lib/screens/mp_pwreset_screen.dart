@@ -18,6 +18,24 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
   bool _obscureCurrentPw = true;
   bool _obscureNewPw = true;
 
+  double _responsiveFont(double base) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = base * scale;
+    return computed.clamp(base * 0.85, base * 1.4);
+  }
+
+  EdgeInsets _responsivePadding() {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 24, vertical: 20);
+    return const EdgeInsets.symmetric(horizontal: 40, vertical: 24);
+  }
+
+  double _buttonHeight() {
+    final height = MediaQuery.of(context).size.height;
+    return (height < 600) ? 44 : 52;
+  }
+
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -35,11 +53,13 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final msg = response.data['message'] ?? '비밀번호가 변경되었습니다.';
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );
         Navigator.of(context).pop();
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('비밀번호 변경 실패: ${response.statusCode}')),
         );
@@ -50,10 +70,12 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
         final data = e.response!.data;
         if (data['detail'] != null) msg = data['detail'];
       }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg)),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('알 수 없는 오류: $e')),
       );
@@ -71,95 +93,101 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final labelFontSize = _responsiveFont(16);
+    final buttonFontSize = _responsiveFont(16);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('비밀번호 변경'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _currentPwController,
-                obscureText: _obscureCurrentPw,
-                decoration: InputDecoration(
-                  labelText: '현재 비밀번호',
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureCurrentPw
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureCurrentPw = !_obscureCurrentPw;
-                      });
-                    },
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '현재 비밀번호를 입력하세요';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _newPwController,
-                obscureText: _obscureNewPw,
-                decoration: InputDecoration(
-                  labelText: '새 비밀번호',
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureNewPw
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureNewPw = !_obscureNewPw;
-                      });
-                    },
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '새 비밀번호를 입력하세요';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _changePassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    '변경하기',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        title: Text(
+          '비밀번호 변경',
+          style: TextStyle(fontSize: _responsiveFont(20), fontWeight: FontWeight.w600),
         ),
       ),
       backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: _responsivePadding(),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _currentPwController,
+                  obscureText: _obscureCurrentPw,
+                  decoration: InputDecoration(
+                    labelText: '현재 비밀번호',
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureCurrentPw ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureCurrentPw = !_obscureCurrentPw;
+                        });
+                      },
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return '현재 비밀번호를 입력하세요';
+                    }
+                    return null;
+                  },
+                  style: TextStyle(fontSize: labelFontSize),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _newPwController,
+                  obscureText: _obscureNewPw,
+                  decoration: InputDecoration(
+                    labelText: '새 비밀번호',
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureNewPw ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureNewPw = !_obscureNewPw;
+                        });
+                      },
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return '새 비밀번호를 입력하세요';
+                    }
+                    return null;
+                  },
+                  style: TextStyle(fontSize: labelFontSize),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: _buttonHeight(),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _changePassword,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                      '변경하기',
+                      style: TextStyle(color: Colors.white, fontSize: buttonFontSize),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

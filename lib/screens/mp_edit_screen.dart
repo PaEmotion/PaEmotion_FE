@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
 import '../utils/user_storage.dart';
-import 'mypage_screen.dart';
 
 class MpEditScreen extends StatefulWidget {
   const MpEditScreen({super.key});
@@ -21,6 +20,24 @@ class _MpEditScreenState extends State<MpEditScreen> {
 
   bool _isLoading = false;
 
+  double _responsiveFont(double base, BuildContext context) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = base * scale;
+    return computed.clamp(base * 0.85, base * 1.4);
+  }
+
+  EdgeInsets _responsivePadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 24, vertical: 20);
+    return const EdgeInsets.symmetric(horizontal: 40, vertical: 24);
+  }
+
+  double _buttonHeight(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+    return (height < 600) ? 44 : 52;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -28,16 +45,16 @@ class _MpEditScreenState extends State<MpEditScreen> {
   }
 
   Future<void> _loadCurrentNickname() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
+    final profileJson = await UserStorage.loadProfileJson();
+    if (profileJson == null) {
+      // 프로필 정보 없음 처리
+      return;
+    }
+    final nickname = profileJson['nickname'] as String?;
 
-    if (jsonString == null) return;
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-
+    if (!mounted) return;
     setState(() {
-      _nicknameController.text = user.nickname ?? '';
+      _nicknameController.text = nickname ?? '';
     });
   }
 
@@ -56,21 +73,19 @@ class _MpEditScreenState extends State<MpEditScreen> {
 
   Future<void> _saveNickname() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final newNickname = _nicknameController.text;
+    final newNickname = _nicknameController.text.trim();
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString('user');
-      if (jsonString == null) throw Exception('사용자 정보가 없습니다.');
-
-      final userMap = jsonDecode(jsonString);
-      final user = User.fromJson(userMap);
-
+      final profileJson = await UserStorage.loadProfileJson();
+      if (profileJson == null) {
+        // 유저 정보 없음 처리
+        return;
+      }
+      final user = User.fromJson(profileJson);
 
       final response = await ApiClient.dio.put(
         '/users/nickname',
@@ -78,32 +93,20 @@ class _MpEditScreenState extends State<MpEditScreen> {
       );
 
       if (response.statusCode == 200) {
-
         final msg = response.data['message'] ?? '닉네임이 변경되었습니다.';
 
-        final updatedUser = User(
-          id: user.id,
-          email: user.email,
-          accessToken: user.accessToken,
-          name: user.name,
+        final updatedUser = user.copyWith(
           nickname: newNickname,
-          refreshToken: user.refreshToken,
         );
 
-        await UserStorage.saveUser(updatedUser);
-
+        await UserStorage.saveProfile(updatedUser);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MyPageScreen()),
-              (route) => false,
-        );
-        Navigator.pop(context);
+        Navigator.pop(context, updatedUser);
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -131,34 +134,81 @@ class _MpEditScreenState extends State<MpEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final titleFont = _responsiveFont(20, context);
+    final labelFont = _responsiveFont(16, context);
+    final hintFont = _responsiveFont(14, context);
+    final buttonFont = _responsiveFont(16, context);
+    final verticalGap = 16.0;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('닉네임 수정'),
+        title: Text(
+          '닉네임 수정',
+          style: TextStyle(fontSize: titleFont, fontWeight: FontWeight.w600),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _nicknameController,
-                decoration: const InputDecoration(
-                  labelText: '변경할 닉네임',
-                  hintText: '1자 이상 7자 이하, 공백 및 띄어쓰기 불가',
-                  border: OutlineInputBorder(),
-                ),
-                validator: _validateNickname,
-                maxLength: 7,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: _responsivePadding(context),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height - kToolbarHeight - MediaQuery.of(context).padding.vertical,
+            ),
+            child: IntrinsicHeight(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '변경할 닉네임을 입력해주세요.',
+                    style: TextStyle(fontSize: labelFont, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: verticalGap),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _nicknameController,
+                          decoration: InputDecoration(
+                            labelText: '닉네임',
+                            hintText: '1자 이상 7자 이하, 공백 및 띄어쓰기 불가',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            counterText: '',
+                          ),
+                          maxLength: 7,
+                          style: TextStyle(fontSize: hintFont),
+                          validator: _validateNickname,
+                        ),
+                        SizedBox(height: verticalGap * 1.2),
+                        SizedBox(
+                          height: _buttonHeight(context),
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _saveNickname,
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(vertical: 0),
+                            ),
+                            child: Text(
+                              '저장',
+                              style: TextStyle(
+                                fontSize: buttonFont,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                ],
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveNickname,
-                child: const Text('저장'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
