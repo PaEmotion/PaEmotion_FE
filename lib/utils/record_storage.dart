@@ -35,7 +35,7 @@ class RecordStorage {
     List<Record> recordList = records.map((e) => Record.fromJson(jsonDecode(e))).toList();
 
     // id가 같은 레코드 인덱스 찾기
-    final index = recordList.indexWhere((r) => r.spendid == updatedRecord.spendid);
+    final index = recordList.indexWhere((r) => r.spendId == updatedRecord.spendId);
     if (index != -1) {
       recordList[index] = updatedRecord;  // 수정
       // 다시 문자열 리스트로 변환해서 저장
@@ -47,10 +47,10 @@ class RecordStorage {
   // 소비한 총액 계산
   static Future<int> getMonthlySpending(String yearMonth) async {
     final records = await loadRecords();
-    final filtered = records.where((record) => record.date.startsWith(yearMonth));
+    final filtered = records.where((record) => record.spendDate.startsWith(yearMonth));
     int total = 0;
     for (final record in filtered) {
-      total += record.amount;
+      total += record.spendCost;
     }
     return total;
   }
@@ -64,7 +64,7 @@ class RecordStorage {
 
     List<Record> recordList = records.map((e) => Record.fromJson(jsonDecode(e))).toList();
 
-    recordList.removeWhere((r) => r.spendid == id);
+    recordList.removeWhere((r) => r.spendId == id);
 
     final updatedRecords = recordList.map((r) => jsonEncode(r.toJson())).toList();
     await prefs.setStringList(_key, updatedRecords);
@@ -74,11 +74,11 @@ class RecordStorage {
   static Future<int> getCategorySpending(String yearMonth, String category) async {
     final records = await loadRecords();
     final filtered = records.where((record) =>
-    record.date.startsWith(yearMonth) && record.category == category
+    record.spendDate.startsWith(yearMonth) && record.spend_category == category
     );
     int total = 0;
     for (final record in filtered) {
-      total += record.amount;
+      total += record.spendCost;
     }
     return total;
   }
