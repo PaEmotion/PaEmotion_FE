@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
-import '../models/user.dart';
 import '../models/record.dart';
 import '../api/api_client.dart';
 import 'budget_creating_screen.dart';
@@ -46,14 +43,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-    if (jsonString == null) return;
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    final userId = user.id;
-
     final startOfMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     final endOfMonth = DateTime.now().add(const Duration(days: 1)); // 내일까지 포함
 
@@ -62,10 +51,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
     try {
       // 1. 예산 데이터 조회
       final budgetRes = await ApiClient.dio.get(
-        '/budgets/$userId',
+        '/budgets/me',
         queryParameters: {'budgetMonth': budgetMonthStr},
       );
-      final budgetData = budgetRes.data;
+      final body = budgetRes.data;
+      final budgetData = body['data'] ?? {};
 
       if (budgetData == null || budgetData['categoryBudget'] == null) {
         setState(() {
@@ -100,7 +90,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         totalSpending += amount;
       }
 
-      final response = await ApiClient.dio.get('/ml/predict/$userId');
+      final response = await ApiClient.dio.get('/ml/predict');
       final predList = response.data['예측'];
       double? prediction;
 
@@ -125,16 +115,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<List<Record>> fetchRecordsInRange(DateTime start, DateTime end) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString('user');
-    if (userJson == null) throw Exception('로그인 정보 없음');
-    final userMap = jsonDecode(userJson);
-    final user = User.fromJson(userMap);
-    final userId = user.id;
     final dio = ApiClient.dio;
 
     try {
-      final res = await dio.get('/records/$userId', queryParameters: {
+      final res = await dio.get('/records/me', queryParameters: {
         'startDate': DateFormat('yyyy-MM-dd').format(start),
         'endDate': DateFormat('yyyy-MM-dd').format(end),
       });
@@ -163,12 +147,65 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      bottomNavigationBar: _totalBudget == null
+          ? LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          double baseFontSize;
+          double horizontalPadding;
+
+          if (width < 350) {
+            baseFontSize = 12;
+            horizontalPadding = 16;
+          } else if (width < 600) {
+            baseFontSize = 14;
+            horizontalPadding = 24;
+          } else {
+            baseFontSize = 18;
+            horizontalPadding = 32;
+          }
+
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: 16,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const BudgetCreatingScreen()),
+                  ).then((value) {
+                    if (value == true) _loadData();
+                  });
+                },
+                child: Text(
+                  '이번달 예산 설정하기',
+                  style: TextStyle(fontSize: baseFontSize),
+                ),
+              ),
+            ),
+          );
+        },
+      )
+          : null,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
 
-            // 화면 크기에 따른 기본 크기 조절
             double baseFontSize;
             double basePadding;
             double circleRadius;
@@ -302,7 +339,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ),
                     ],
                     SizedBox(height: basePadding * 2),
-
                     ...allCatIds.map((catId) {
                       final catBudget = _categoryBudgets[catId] ?? 0;
                       final catSpending = _categorySpendings[catId] ?? 0;
@@ -310,7 +346,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           ? (catSpending / catBudget)
                           : (catSpending > 0 ? 1.0 : 0.0);
 
-                      final catColor = (catPercent >= 1.0 || (catBudget == 0 && catSpending > 0))
+                      final catColor = (catPercent >= 1.0 ||
+                          (catBudget == 0 && catSpending > 0))
                           ? Colors.orange[700]!
                           : Colors.green.withOpacity(catPercent.clamp(0.5, 1.0));
 
@@ -341,36 +378,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ],
                       );
                     }).toList(),
-                  ],
-                  if (_totalBudget == null) ...[
-                    SizedBox(height: 450),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const BudgetCreatingScreen()),
-                          ).then((value) {
-                            if (value == true) _loadData();
-                          });
-                        },
-                        child: Text(
-                          '이번달 예산 설정하기',
-                          style: TextStyle(fontSize: baseFontSize),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 60),
                   ],
                 ],
               ),
