@@ -78,9 +78,10 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
       return;
     }
 
-    final data = response.data;
-    final int? createdChallengeId = data['challengeId'];
-    final String message = data['message'] ?? '챌린지가 성공적으로 생성되었습니다!';
+    final responseData = response.data['data'];
+    final resmessage = response.data['message'];
+    final int? createdChallengeId = responseData['challengeId'];
+    final String message = resmessage ?? '챌린지가 성공적으로 생성되었습니다!';
 
     Navigator.push(
       context,
