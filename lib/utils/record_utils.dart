@@ -21,5 +21,3 @@ Future<List<Record>> fetchRecordsInRange(DateTime start, DateTime end) async {
     return <Record>[];
   }
 }
-
-
