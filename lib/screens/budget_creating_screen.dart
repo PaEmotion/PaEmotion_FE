@@ -1,9 +1,7 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
 import '../api/api_client.dart';
 
 class BudgetCreatingScreen extends StatefulWidget {
@@ -27,7 +25,6 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   int lastMonthTotalSpent = 0;
 
   final NumberFormat numberFormat = NumberFormat('#,###');
-  int? _userId;
 
   int get totalBudget {
     int sum = 0;
@@ -42,19 +39,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserAndLastMonthSpending();
-  }
-
-  Future<void> _loadUserAndLastMonthSpending() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-    if (jsonString == null) return;
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    _userId = user.id;
-
-    await _loadLastMonthSpendingFromApi();
+    _loadLastMonthSpendingFromApi();
   }
 
   String _getLastMonth() {
@@ -64,48 +49,51 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   Future<void> _loadLastMonthSpendingFromApi() async {
-    if (_userId == null) return;
-
     final dio = ApiClient.dio;
     final lastMonthStr = '${_getLastMonth()}-01';
 
-    debugPrint('User ID: $_userId');
-    debugPrint('Requesting last month spending for: $lastMonthStr');
-    debugPrint('Full URL: ${dio.options.baseUrl}/budgets/lastspent/$_userId');
-
     try {
       final response = await dio.get(
-        '/budgets/lastspent/$_userId',
+        '/budgets/lastspent/me',
         queryParameters: {'lastMonth': lastMonthStr},
       );
 
-      debugPrint('Response status: ${response.statusCode}');
-      debugPrint('Response data: ${response.data}');
-
       if (response.statusCode == 200) {
-        final data = response.data;
+        final json = response.data;
+        if (json['success'] == true && json['data'] != null) {
+          final data = json['data'];
 
-        Map<String, int> totals = {};
-        if (data['categorySpent'] != null) {
-          for (final item in data['categorySpent']) {
-            final int spendCategoryId = item['spendCategoryId'];
-            final int spent = item['spent'];
-            if (spendCategoryId > 0 && spendCategoryId <= allCategories.length) {
-              final String categoryName = allCategories[spendCategoryId - 1];
-              totals[categoryName] = spent;
+          Map<String, int> totals = {};
+          if (data['categorySpent'] != null) {
+            for (final item in data['categorySpent']) {
+              final int spendCategoryId = item['spendCategoryId'];
+              final int spent = item['spent'];
+              if (spendCategoryId > 0 &&
+                  spendCategoryId <= allCategories.length) {
+                final String categoryName = allCategories[spendCategoryId - 1];
+                totals[categoryName] = spent;
+              }
             }
           }
-        }
 
-        setState(() {
-          lastMonthTotals = totals;
-          lastMonthTotalSpent = data['totalSpent'] ?? 0;
-        });
+          setState(() {
+            lastMonthTotals = totals;
+            lastMonthTotalSpent = data['totalSpent'] ?? 0;
+          });
+        } else {
+          debugPrint('API 응답 성공이지만 데이터가 없습니다: ${json['message']}');
+        }
       } else {
         debugPrint('지난달 소비 API 실패: 상태코드 ${response.statusCode}');
+        debugPrint('에러 메시지: ${response.data}');
       }
-    } catch (e) {
-      debugPrint('지난달 소비 API 호출 중 오류: $e');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        debugPrint('API 에러: 상태코드 ${e.response!.statusCode}');
+        debugPrint('에러 응답 데이터: ${e.response!.data}');
+      } else {
+        debugPrint('API 호출 중 오류: $e');
+      }
     }
   }
 
@@ -136,13 +124,6 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   Future<void> _saveBudgets() async {
-    if (_userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다.')),
-      );
-      return;
-    }
-
     for (final item in budgetItems) {
       final controller = item['controller'] as TextEditingController;
       final amount = int.tryParse(controller.text) ?? 0;
@@ -174,7 +155,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     try {
       final dio = ApiClient.dio;
       final response = await dio.post(
-        '/budgets/create/$_userId',
+        '/budgets/create',
         data: requestBody,
       );
 
@@ -218,28 +199,59 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     super.dispose();
   }
 
+  double responsiveWidth(BuildContext context, double w) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth * (w / 375);
+  }
+
+  double responsiveHeight(BuildContext context, double h) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return screenHeight * (h / 812);
+  }
+
+  double responsiveFont(BuildContext context, double size) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    return size * scale;
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = budgetItems.map((e) => e['category'] as String).toSet();
     final available = allCategories.where((c) => !selected.contains(c)).toList();
 
+    final horizontalPadding = responsiveWidth(context, 20);
+    final verticalSpacing = responsiveHeight(context, 12);
+    final iconSize = responsiveWidth(context, 22);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('예산 설정하기'),
+        title: Text(
+          '예산 설정하기',
+          style: TextStyle(fontSize: responsiveFont(context, 18), fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalSpacing),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (budgetItems.isEmpty)
-              const Center(
-                child: Text('카테고리를 추가하여 예산을 입력하세요.'),
+              Padding(
+                padding: EdgeInsets.only(bottom: verticalSpacing),
+                child: Center(
+                  child: Text(
+                    '카테고리를 추가하여 예산을 입력하세요.',
+                    style: TextStyle(fontSize: responsiveFont(context, 14)),
+                  ),
+                ),
               ),
             Expanded(
               child: ListView.builder(
+                padding: EdgeInsets.zero,
                 itemCount: budgetItems.length,
                 itemBuilder: (context, index) {
                   final item = budgetItems[index];
@@ -247,7 +259,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                   final controller = item['controller'] as TextEditingController;
 
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: EdgeInsets.only(bottom: verticalSpacing),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -262,7 +274,10 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                                     .where((c) => c == category || !selected.contains(c))
                                     .map((c) => DropdownMenuItem(
                                   value: c,
-                                  child: Text(c),
+                                  child: Text(
+                                    c,
+                                    style: TextStyle(fontSize: responsiveFont(context, 14)),
+                                  ),
                                 ))
                                     .toList(),
                                 onChanged: (newCategory) {
@@ -279,42 +294,51 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: 20),
+                            SizedBox(width: responsiveWidth(context, 12)),
                             Expanded(
                               flex: 4,
                               child: TextField(
                                 controller: controller,
                                 keyboardType: TextInputType.number,
                                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: '예산을 입력해주세요.',
                                   isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: responsiveHeight(context, 10),
+                                    horizontal: responsiveWidth(context, 12),
+                                  ),
                                   border: InputBorder.none,
                                   filled: true,
-                                  fillColor: Color(0xFFF5F5F5),
+                                  fillColor: const Color(0xFFF5F5F5),
                                 ),
-                                style: const TextStyle(fontSize: 14),
+                                style: TextStyle(fontSize: responsiveFont(context, 14)),
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            const SizedBox(width: 5),
+                            SizedBox(width: responsiveWidth(context, 8)),
                             Expanded(
                               flex: 1,
                               child: IconButton(
+                                iconSize: iconSize,
                                 icon: const Icon(Icons.delete, color: Color(0xFFEF9A9A)),
                                 onPressed: () => _removeBudgetItem(index),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
                             ),
                           ],
                         ),
                         Padding(
-                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          padding: EdgeInsets.only(top: responsiveHeight(context, 4), left: responsiveWidth(context, 4)),
                           child: Text(
                             lastMonthTotals.containsKey(category)
                                 ? '지난달 $category에 사용한 금액: ${numberFormat.format(lastMonthTotals[category])}원'
                                 : '지난달 $category에 사용한 금액이 없습니다.',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: responsiveFont(context, 12),
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       ],
@@ -327,30 +351,43 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
               Center(
                 child: OutlinedButton.icon(
                   onPressed: _addBudgetItem,
-                  icon: const Icon(Icons.add),
-                  label: const Text('카테고리 추가'),
+                  icon: Icon(Icons.add, size: responsiveWidth(context, 18)),
+                  label: Text(
+                    '카테고리 추가',
+                    style: TextStyle(fontSize: responsiveFont(context, 14)),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.grey, width: 1.5),
                     foregroundColor: Colors.black,
+                    padding: EdgeInsets.symmetric(
+                      vertical: responsiveHeight(context, 12),
+                      horizontal: responsiveWidth(context, 16),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(responsiveWidth(context, 6)),
+                    ),
                   ),
                 ),
               ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsiveHeight(context, 14)),
             Text(
               "총 예산: ${numberFormat.format(totalBudget)}원",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: responsiveFont(context, 16),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: responsiveHeight(context, 6)),
             Text(
               '지난달 총 소비금액: ${numberFormat.format(lastMonthTotalSpent)}원',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: responsiveFont(context, 13), color: Colors.grey),
             ),
-            const SizedBox(height: 20),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+            Divider(height: responsiveHeight(context, 24)),
+            Padding(
+              padding: EdgeInsets.only(bottom: responsiveHeight(context, 6)),
               child: Text(
-                '예산 설정 전에 한 번 더 확인해주세요.\n설정 후에는 수정이 제한돼요.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                '예산 설정 전에 한 번 더 확인해주세요. 설정 후에는 수정이 제한돼요.',
+                style: TextStyle(fontSize: responsiveFont(context, 12), color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -361,12 +398,13 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: responsiveHeight(context, 16)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(responsiveWidth(context, 8)),
                   ),
+                  textStyle: TextStyle(fontSize: responsiveFont(context, 16)),
                 ),
-                child: const Text('예산 저장하기', style: TextStyle(fontSize: 16)),
+                child: const Text('예산 저장하기'),
               ),
             ),
           ],
