@@ -1,6 +1,3 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,6 +20,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
   String? _nickname = '사용자';
   bool _isLoading = true;
 
+  double _responsiveFont(double base, BuildContext context) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = base * scale;
+    return computed.clamp(base * 0.9, base * 1.3);
+  }
+
+  EdgeInsets _contentPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 12, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 20, vertical: 20);
+    return const EdgeInsets.symmetric(horizontal: 32, vertical: 24);
+  }
+
+  double _iconSize(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 48;
+    if (width < 600) return 56;
+    return 64;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,36 +47,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _fetchUserInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-
-    if (jsonString == null) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    final accessToken = user.accessToken;
-
     try {
-      final dio = Dio();
       final response = await ApiClient.dio.get(
         '/users/me',
-        options: Options(
-          headers: {'Authorization': 'Bearer $accessToken'},
-        ),
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
+        final body = response.data;
+        final data = body['data'] ?? {};
         final nicknameFromApi = data['nickname'] as String?;
         if (!mounted) return;
         setState(() {
-          _nickname = (nicknameFromApi != null && nicknameFromApi.isNotEmpty) ? nicknameFromApi : _nickname;
+          _nickname = (nicknameFromApi != null && nicknameFromApi.isNotEmpty)
+              ? nicknameFromApi
+              : _nickname;
           _isLoading = false;
         });
       } else {
@@ -76,21 +77,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  void _goToLogin() {
-    if (!mounted) return;
-    // 유저 데이터 및 토큰 클리어
-    UserStorage.clearUser();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-    );
-  }
-
   Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    await UserStorage.clearUser();
+    await UserStorage.clearProfile();
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -102,92 +90,132 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final titleStyle = TextStyle(
+      fontSize: _responsiveFont(24, context),
+      fontWeight: FontWeight.bold,
+    );
+    final sectionTitleStyle = TextStyle(
+      fontSize: _responsiveFont(18, context),
+      fontWeight: FontWeight.w600,
+    );
+    final bodyStyle = TextStyle(
+      fontSize: _responsiveFont(16, context),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('마이페이지'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 닉네임 영역
-            Row(
-              children: [
-                const Icon(
-                  Icons.account_circle,
-                  size: 60,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _nickname ?? '사용자',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  tooltip: '닉네임 수정',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MpEditScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : LayoutBuilder(builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: _contentPadding(context),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 닉네임 영역
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.account_circle,
+                          size: _iconSize(context),
+                          color: Colors.grey,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _nickname ?? '사용자',
+                            style: titleStyle,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          tooltip: '닉네임 수정',
+                          onPressed: () async {
+                            final updatedUser = await Navigator.push<User?>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MpEditScreen(),
+                              ),
+                            );
 
-            Text('개인정보', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-
-            ListTile(
-              leading: const Icon(Icons.lock_reset),
-              title: const Text('비밀번호 변경'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MpPwResetScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
-
-            const Divider(height: 40),
-            Text('기타', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.psychology_alt),
-              title: const Text('소비성향 테스트'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TestMainScreen()),
-                );
-              },
-              trailing: const Icon(Icons.chevron_right),
-            ),
-            const Spacer(),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.logout),
-                label: const Text('로그아웃'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            if (updatedUser != null) {
+                              setState(() {
+                                _nickname = updatedUser.nickname;
+                              });
+                            } else {
+                              await _fetchUserInfo();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    Text('개인정보', style: sectionTitleStyle),
+                    SizedBox(height: 10),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.lock_reset),
+                      title: Text('비밀번호 변경', style: bodyStyle),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const MpPwResetScreen()),
+                        );
+                      },
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                    const Divider(height: 40),
+                    Text('기타', style: sectionTitleStyle),
+                    SizedBox(height: 10),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.psychology_alt),
+                      title: Text('소비성향 테스트', style: bodyStyle),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const TestMainScreen()),
+                        );
+                      },
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                    const Spacer(),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 300),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.logout),
+                          label: Text('로그아웃', style: bodyStyle.copyWith(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _logout,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                onPressed: _logout,
               ),
             ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
 }
-
