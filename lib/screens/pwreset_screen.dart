@@ -54,12 +54,32 @@ class _MpPwResetScreenState extends State<PwResetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    double fontSize;
+    double buttonHeight;
+    EdgeInsetsGeometry padding;
+
+    if (width < 350) {
+      fontSize = 14;
+      buttonHeight = 40;
+      padding = const EdgeInsets.symmetric(horizontal: 12);
+    } else if (width < 600) {
+      fontSize = 16;
+      buttonHeight = 48;
+      padding = const EdgeInsets.symmetric(horizontal: 24);
+    } else {
+      fontSize = 18;
+      buttonHeight = 56;
+      padding = const EdgeInsets.symmetric(horizontal: 40);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('비밀번호 변경'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: padding,
         child: Column(
           children: [
             TextField(
@@ -69,20 +89,34 @@ class _MpPwResetScreenState extends State<PwResetScreen> {
                 hintText: '이메일을 입력하세요',
               ),
               keyboardType: TextInputType.emailAddress,
+              style: TextStyle(fontSize: fontSize),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loading ? null : _sendResetRequest,
-              child: _loading
-                  ? const SizedBox(
-                  width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('재설정 이메일 전송'),
+            SizedBox(height: fontSize),
+            SizedBox(
+              height: buttonHeight,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _sendResetRequest,
+                child: _loading
+                    ? SizedBox(
+                  width: buttonHeight / 2,
+                  height: buttonHeight / 2,
+                  child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+                    : Text(
+                  '재설정 이메일 전송',
+                  style: TextStyle(fontSize: fontSize),
+                ),
+              ),
             ),
             if (_status != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: fontSize * 0.75),
               Text(
                 _status!,
-                style: TextStyle(color: _status!.startsWith('실패') ? Colors.red : Colors.green),
+                style: TextStyle(
+                  color: _status!.startsWith('실패') ? Colors.red : Colors.green,
+                  fontSize: fontSize * 0.9,
+                ),
               ),
             ],
             const Spacer(),
@@ -90,16 +124,17 @@ class _MpPwResetScreenState extends State<PwResetScreen> {
               onTap: () {
                 Navigator.of(context).pushNamed('/deeplink-failed-password');
               },
-              child: const Text(
+              child: Text(
                 '이메일에 온 링크를 눌렀을 때 앱으로 연결이 되지 않은 경우',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: fontSize * 0.7,
                   color: Colors.grey,
                   decoration: TextDecoration.underline,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: fontSize * 0.9),
           ],
         ),
       ),

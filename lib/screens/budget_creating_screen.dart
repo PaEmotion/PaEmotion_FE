@@ -1,9 +1,7 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
 import '../api/api_client.dart';
 
 class BudgetCreatingScreen extends StatefulWidget {
@@ -27,7 +25,6 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   int lastMonthTotalSpent = 0;
 
   final NumberFormat numberFormat = NumberFormat('#,###');
-  int? _userId;
 
   int get totalBudget {
     int sum = 0;
@@ -42,19 +39,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserAndLastMonthSpending();
-  }
-
-  Future<void> _loadUserAndLastMonthSpending() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-    if (jsonString == null) return;
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    _userId = user.id;
-
-    await _loadLastMonthSpendingFromApi();
+    _loadLastMonthSpendingFromApi();
   }
 
   String _getLastMonth() {
@@ -64,41 +49,51 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   Future<void> _loadLastMonthSpendingFromApi() async {
-    if (_userId == null) return;
-
     final dio = ApiClient.dio;
     final lastMonthStr = '${_getLastMonth()}-01';
 
     try {
       final response = await dio.get(
-        '/budgets/lastspent/$_userId',
+        '/budgets/lastspent/me',
         queryParameters: {'lastMonth': lastMonthStr},
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
+        final json = response.data;
+        if (json['success'] == true && json['data'] != null) {
+          final data = json['data'];
 
-        Map<String, int> totals = {};
-        if (data['categorySpent'] != null) {
-          for (final item in data['categorySpent']) {
-            final int spendCategoryId = item['spendCategoryId'];
-            final int spent = item['spent'];
-            if (spendCategoryId > 0 && spendCategoryId <= allCategories.length) {
-              final String categoryName = allCategories[spendCategoryId - 1];
-              totals[categoryName] = spent;
+          Map<String, int> totals = {};
+          if (data['categorySpent'] != null) {
+            for (final item in data['categorySpent']) {
+              final int spendCategoryId = item['spendCategoryId'];
+              final int spent = item['spent'];
+              if (spendCategoryId > 0 &&
+                  spendCategoryId <= allCategories.length) {
+                final String categoryName = allCategories[spendCategoryId - 1];
+                totals[categoryName] = spent;
+              }
             }
           }
-        }
 
-        setState(() {
-          lastMonthTotals = totals;
-          lastMonthTotalSpent = data['totalSpent'] ?? 0;
-        });
+          setState(() {
+            lastMonthTotals = totals;
+            lastMonthTotalSpent = data['totalSpent'] ?? 0;
+          });
+        } else {
+          debugPrint('API 응답 성공이지만 데이터가 없습니다: ${json['message']}');
+        }
       } else {
         debugPrint('지난달 소비 API 실패: 상태코드 ${response.statusCode}');
+        debugPrint('에러 메시지: ${response.data}');
       }
-    } catch (e) {
-      debugPrint('지난달 소비 API 호출 중 오류: $e');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        debugPrint('API 에러: 상태코드 ${e.response!.statusCode}');
+        debugPrint('에러 응답 데이터: ${e.response!.data}');
+      } else {
+        debugPrint('API 호출 중 오류: $e');
+      }
     }
   }
 
@@ -129,13 +124,6 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   Future<void> _saveBudgets() async {
-    if (_userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다.')),
-      );
-      return;
-    }
-
     for (final item in budgetItems) {
       final controller = item['controller'] as TextEditingController;
       final amount = int.tryParse(controller.text) ?? 0;
@@ -167,7 +155,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     try {
       final dio = ApiClient.dio;
       final response = await dio.post(
-        '/budgets/create/$_userId',
+        '/budgets/create',
         data: requestBody,
       );
 
@@ -211,7 +199,6 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     super.dispose();
   }
 
-  // 기준 너비: 375 (iPhone 13 mini 등), 폰트/패딩 스케일링
   double responsiveWidth(BuildContext context, double w) {
     final screenWidth = MediaQuery.of(context).size.width;
     return screenWidth * (w / 375);
@@ -219,7 +206,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
 
   double responsiveHeight(BuildContext context, double h) {
     final screenHeight = MediaQuery.of(context).size.height;
-    return screenHeight * (h / 812); // 기준 높이
+    return screenHeight * (h / 812);
   }
 
   double responsiveFont(BuildContext context, double size) {

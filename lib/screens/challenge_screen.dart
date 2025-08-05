@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/challenge.dart';
 import '../models/challenge_detail.dart';
 import '../utils/challenge_utils.dart';
 import 'challenge_creating_screen.dart';
 import 'challenge_search_screen.dart';
-import '../models/user.dart';
+import '../utils/user_storage.dart';
 
 class ChallengeScreen extends StatefulWidget {
   const ChallengeScreen({super.key});
@@ -45,14 +44,16 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
 
   Future<void> _loadCurrentUser() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString('user');
-      if (jsonString == null) return;
-      final userMap = jsonDecode(jsonString);
-      final user = User.fromJson(userMap);
-      setState(() {
-        _currentUserId = user.id;
-      });
+      final userMap = await UserStorage.loadProfileJson();
+      if (userMap == null) return;
+
+      final userId = userMap['userId'];
+
+      if (userId != null) {
+        setState(() {
+          _currentUserId = userId;
+        });
+      }
     } catch (e) {
       debugPrint('[loadCurrentUser] $e');
     }
@@ -79,6 +80,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
       }
 
       final detailData = await ChallengeService.getChallengeDetail(currentId);
+
       if (detailData == null) {
         setState(() {
           _myChallengeDetail = null;
@@ -235,7 +237,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
     };
   }
 
-
   double rWidth(BuildContext context, double base) {
     final w = MediaQuery.of(context).size.width;
     return base * (w / 390);
@@ -269,6 +270,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
     final String? myGuineaName = (myIdx != null) ? guineaNames[myIdx % guineaNames.length] : null;
 
     final bool isPositive = detail.challengeType == true;
+    final bool isTeamComplete = detail.teamProgressRate >= 100;
 
     final String goalText = isPositive
         ? '긍정적 소비 ${detail.goalCount}개 하기'
@@ -395,26 +397,32 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
           SizedBox(height: rHeight(context, 8)),
           Center(
             child: Image.asset(
-              detail.teamProgressRate >= 50
+              detail.teamProgressRate >= 100
+                  ? 'lib/assets/complete_guinea.png'
+                  : (detail.teamProgressRate >= 50
                   ? 'lib/assets/opened_guinea.png'
-                  : 'lib/assets/closed_guinea.png',
+                  : 'lib/assets/closed_guinea.png'),
               width: rWidth(context, 220),
               height: rWidth(context, 220),
               fit: BoxFit.contain,
             ),
           ),
           SizedBox(height: rHeight(context, 10)),
-          Center(
-            child: Text(
-              '현재 ${detail.teamProgressRate.toStringAsFixed(1)}% 만큼 진행중이에요.\n'
-                  '${isPositive ? "기니피그가 밥을 기다리고 있어요!" : "계속해서 기니피그의 밥을 지켜주세요!"}',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: rFont(context, 14),
-              ),
+        Center(
+          child: Text(
+            isTeamComplete && isPositive
+                ? // 100% & 긍정 챌린지인 경우, 진행중 문구 없이 특별 메시지
+            '모든 밥을 주는 데 성공했어요!\n기니피그가 행복해졌어요.'
+                : // 그 외는 기존 흐름: 진행률 + 상황 메시지
+            '현재 ${detail.teamProgressRate.toStringAsFixed(1)}% 만큼 진행중이에요.\n'
+                '${isPositive ? "기니피그가 밥을 기다리고 있어요!" : "계속해서 기니피그의 밥을 지켜주세요!"}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: rFont(context, 14),
             ),
           ),
+        ),
           SizedBox(height: rHeight(context, 16)),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -515,7 +523,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                         ),
                       ],
                     ),
-                    SizedBox(height: rHeight(context, 6)),
+                    SizedBox(height: rHeight(context, 15)),
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final parent = constraints.maxWidth;

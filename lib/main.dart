@@ -13,31 +13,57 @@ import 'screens/deeplinkfaliedpasswordscreen.dart';
 import 'screens/home_screen.dart';
 import 'screens/deeplinkpasswordscreen.dart';
 import 'api/api_client.dart';
+import 'screens/loadingscreen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const Material(
+      color: Colors.white,
+      child: Center(
+        child: CircularProgressIndicator(color: Colors.black),
+      ),
+    );
+  };
+
+  // 프레임워크 전체 에러 핸들링
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    runApp(const WhiteLoadingFallbackApp());
+  };
+
+  // 비동기 예외 핸들링
+  runZonedGuarded(() async {
+    runApp(const MyApp());
+  }, (error, stackTrace) {
+    runApp(const WhiteLoadingFallbackApp());
+  });
+
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // 네트워크 연결 체크
-  var connectivityResult = await Connectivity().checkConnectivity();
-  if (connectivityResult == ConnectivityResult.none) {
-    runApp(const OfflineApp());
-    return;
-  }
+  runZonedGuarded(() async {
+    // 네트워크 연결 체크
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      runApp(const OfflineApp());
+      return;
+    }
 
-  // 사용자/토큰 로컬 초기화
-  await UserManager().init();
+    // 사용자/토큰 로컬 초기화
+    await UserManager().init();
+    ApiClient.initInterceptor(navigatorKey);
+    await ApiClient.ensureValidAccessToken();
 
-  ApiClient.initInterceptor(navigatorKey);
-  await ApiClient.ensureValidAccessToken();
-
-  runApp(const MyApp());
+    runApp(const MyApp());
+  }, (error, stackTrace) {
+    // 여기서 에러 UI 띄움
+    runApp(const WhiteLoadingFallbackApp());
+  });
 }
+
 
 class OfflineApp extends StatelessWidget {
   const OfflineApp({super.key});
@@ -92,18 +118,16 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _initLoginState() async {
-    final loggedIn = UserManager().isLoggedIn;
-
-    if (loggedIn) {
+    await UserManager().init();
+    if (!mounted) return;
+    setState(() {
+      isLoggedIn = UserManager().isLoggedIn;
+    });
+    if (isLoggedIn == true) {
       try {
         await ApiClient.ensureValidAccessToken();
       } catch (_) {}
     }
-
-    if (!mounted) return;
-    setState(() {
-      isLoggedIn = loggedIn;
-    });
   }
 
   Future<void> _initDeepLink() async {

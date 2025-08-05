@@ -2,25 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import '../utils/user_storage.dart';
 import '../utils/user_manager.dart';
 import '../models/user.dart';
 
 class ApiClient {
-  // 메인 Dio
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'https://5f21f1fcbd69.ngrok-free.app',
+      baseUrl: 'https://19106eca6741.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
     ),
   );
 
-  // refresh 전용 Dio (인터셉터 없음)
   static final Dio _refreshDio = Dio(
     BaseOptions(
-      baseUrl: 'https://5f21f1fcbd69.ngrok-free.app',
+      baseUrl: 'https://19106eca6741.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
@@ -29,49 +26,44 @@ class ApiClient {
 
   static const String _refreshPath = '/users/token/refresh';
 
-  // 토큰 붙여야 하는 private path
   static const List<String> _privatePaths = [
     '/users/me',
     '/challenges/join',
     '/challenges/create',
     '/challenges/current',
     '/users/nickname',
+    '/records/me',
+    '/records/me/',
+    '/ml/predict',
+    '/budgets/me',
+    '/budgets/lastspent/me',
+    '/budgets/create',
+    '/challenges/detail/'
   ];
 
-  // 동시 refresh 단일화 처리용 Completer
-  static Completer<String?>? _refreshCompleter;
+  // 진행 중인 refresh 단일화
+  static Future<String?>? _ongoingRefresh;
 
-  /// 앱 시작 시 액세스 토큰 만료 임박 감지 => 선제 refresh
+  /// 앱 시작 등에서 미리 access token 만료 직전이면 갱신
   static Future<void> ensureValidAccessToken({Duration skew = const Duration(minutes: 2)}) async {
-    final user = await UserStorage.loadUser();
-    if (user == null || user.accessToken.isEmpty || user.refreshToken.isEmpty) {
-      return;
-    }
+    final user = UserManager().currentUser;
+    if (user == null || user.accessToken.isEmpty || user.refreshToken.isEmpty) return;
 
     if (_isAccessTokenExpiringSoon(user.accessToken, skew: skew)) {
-      debugPrint('⏱️ Access token expiring soon at app start → refreshing...');
+      debugPrint('⏱️ Preemptive refresh: token expiring soon');
       try {
         final newAccess = await _refreshAccessToken(user.refreshToken);
         if (newAccess != null && newAccess.isNotEmpty) {
-          final updated = User(
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            nickname: user.nickname,
-            accessToken: newAccess,
-            refreshToken: user.refreshToken,
-          );
-          await UserStorage.saveUser(updated);
-          debugPrint('✅ Pre-emptive refresh success on app start');
+          await _saveUpdatedAccessToken(user, newAccess);
+          debugPrint('✅ Preemptive refresh succeeded');
         } else {
-          debugPrint('⚠️ Pre-emptive refresh returned empty token');
+          debugPrint('⚠️ Preemptive refresh returned empty');
         }
       } catch (e) {
-        debugPrint('❌ Pre-emptive refresh failed: $e');
-        // 실패해도 인터셉터 401 처리에 맡김
+        debugPrint('❌ Preemptive refresh failed: $e');
       }
     } else {
-      debugPrint('✅ Access token still valid at app start (no refresh needed)');
+      debugPrint('✅ Access token still fresh');
     }
   }
 
@@ -81,95 +73,105 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          debugPrint('➡️ Request: [${options.method}] ${options.uri}');
+          debugPrint('➡️ Request: [${options.method}] ${options.uri.toString()}');
+          debugPrint('Headers before auth check: ${options.headers}');
+          debugPrint('Data: ${options.data}');
+
           final path = options.uri.path;
 
-          // refresh 토큰 요청일 경우 Authorization 없음
           if (path == _refreshPath) {
+            debugPrint('ℹ️ Request is token refresh, skipping auth header attach');
             return handler.next(options);
           }
 
-          // privatePaths에 포함되는지 검사
-          final requiresAuth = _privatePaths.any((p) => path.startsWith(p));
+          final normalizedPath = path.replaceAll(RegExp(r'/+$'), '');
+          final requiresAuth = _privatePaths.any((p) {
+            final normalizedP = p.replaceAll(RegExp(r'/+$'), '');
+            return normalizedPath == normalizedP || normalizedPath.startsWith('$normalizedP/');
+          });
+
+          debugPrint('Authentication required for $path? $requiresAuth');
+
+          final user = UserManager().currentUser;
+          debugPrint('Current user: $user');
 
           if (!requiresAuth) {
-            // privatePath가 아니면 Authorization 없이 진행
-            debugPrint('ℹ️ Not private path, no Authorization added for $path');
+            debugPrint('ℹ️ No auth needed, so Authorization header NOT added');
             return handler.next(options);
           }
-
-          final user = await UserStorage.loadUser();
 
           if (user == null || user.accessToken.isEmpty) {
-            debugPrint('⚠️ No user/accessToken for $path (will likely 401)');
+            debugPrint('⚠️ No logged-in user/token for $path');
             return handler.next(options);
           }
+
+          String accessToUse = user.accessToken;
 
           try {
             if (_isAccessTokenExpiringSoon(user.accessToken)) {
-              debugPrint('⏱️ Access token expiring soon before request $path → refreshing...');
-              final newAccess = await _refreshAccessToken(user.refreshToken);
-              if (newAccess != null && newAccess.isNotEmpty) {
-                final updated = User(
-                  id: user.id,
-                  email: user.email,
-                  name: user.name,
-                  nickname: user.nickname,
-                  accessToken: newAccess,
-                  refreshToken: user.refreshToken,
-                );
-                await UserStorage.saveUser(updated);
-                options.headers['Authorization'] = 'Bearer $newAccess';
-                debugPrint('🛡️ Added refreshed Authorization header for $path');
+              debugPrint('⏱️ Access token expiring soon before request → refreshing');
+              final refreshed = await _refreshAccessToken(user.refreshToken);
+              if (refreshed != null && refreshed.isNotEmpty) {
+                await _saveUpdatedAccessToken(user, refreshed);
+                accessToUse = refreshed;
+                debugPrint('🛡️ Used refreshed access token');
               } else {
-                options.headers['Authorization'] = 'Bearer ${user.accessToken}';
-                debugPrint('🛡️ Added current Authorization header (refresh returned empty) for $path');
-              }
-            } else {
-              if (!(options.headers['Authorization']?.toString().startsWith('Bearer ') ?? false)) {
-                options.headers['Authorization'] = 'Bearer ${user.accessToken}';
-                debugPrint('🛡️ Added Authorization header for $path');
+                debugPrint('⚠️ Refresh returned empty, falling back to old token');
               }
             }
           } catch (e) {
-            options.headers['Authorization'] = 'Bearer ${user.accessToken}';
-            debugPrint('⚠️ Pre-request refresh failed, sending with current token for $path: $e');
+            debugPrint('⚠️ Pre-request refresh attempt failed: $e');
           }
 
+          options.headers['Authorization'] = 'Bearer $accessToUse';
+          debugPrint('🛡️ Authorization header set for $path');
+          debugPrint('Headers after auth attach: ${options.headers}');
           handler.next(options);
         },
 
         onResponse: (response, handler) {
-          debugPrint('⬅️ Response: [${response.statusCode}] ${response.requestOptions.uri}');
+          debugPrint('⬅️ Response: [${response.statusCode}] ${response.requestOptions.uri.toString()}');
+          debugPrint('Response data: ${response.data}');
           handler.next(response);
         },
 
         onError: (DioException e, ErrorInterceptorHandler handler) async {
-          debugPrint('❌ Error: [${e.response?.statusCode}] ${e.requestOptions.uri}');
+          debugPrint('❌ Error: [${e.response?.statusCode}] ${e.requestOptions.uri.toString()}');
+          debugPrint('Error data: ${e.response?.data}');
+
+          final req = e.requestOptions;
+          final path = Uri.parse(req.uri.toString()).path;
+
+          if (req.extra['retried'] == true) {
+            debugPrint('⚠️ Request already retried once, forwarding error');
+            return handler.next(e);
+          }
+
+          if (path == _refreshPath) {
+            debugPrint('🚫 Refresh endpoint failed → forcing logout');
+            await _forceLogout(navigatorKey.currentState);
+            return handler.next(e);
+          }
 
           if (e.response?.statusCode != 401) {
             return handler.next(e);
           }
 
-          final req = e.requestOptions;
-          final path = Uri.parse(req.uri.toString()).path;
-
-          // refresh 요청에서 401 발생 시 강제 로그아웃
-          if (path == _refreshPath) {
-            debugPrint('🚫 Refresh endpoint 401 → forcing logout');
-            await _forceLogout(navigatorKey.currentContext);
-            return handler.next(e);
-          }
-
-          final hadAuth = (req.headers['Authorization'] ?? '').toString().startsWith('Bearer ');
-
-          if (!hadAuth) {
-            final u = await UserStorage.loadUser();
-            if (u != null && u.accessToken.isNotEmpty) {
+          final hadAuthHeader = (req.headers['Authorization'] ?? '').toString().startsWith('Bearer ');
+          if (!hadAuthHeader) {
+            final current = UserManager().currentUser;
+            if (current != null && current.accessToken.isNotEmpty) {
               try {
-                debugPrint('🔁 Retrying original request with current access token (no refresh)');
-                req.headers['Authorization'] = 'Bearer ${u.accessToken}';
-                final retryNoRefresh = await dio.fetch(req);
+                debugPrint('🔁 Retry once with existing token');
+                final retryNoRefresh = await dio.fetch(
+                  req.copyWith(
+                    headers: {
+                      ...Map<String, dynamic>.from(req.headers),
+                      'Authorization': 'Bearer ${current.accessToken}',
+                    },
+                    extra: {...req.extra, 'retried': true},
+                  ),
+                );
                 return handler.resolve(retryNoRefresh);
               } catch (retryErr) {
                 debugPrint('⚠️ Retry without refresh failed: $retryErr');
@@ -177,41 +179,39 @@ class ApiClient {
             }
           }
 
-          final user = await UserStorage.loadUser();
-          final refreshToken = user?.refreshToken ?? '';
-          if (user == null || refreshToken.isEmpty) {
-            debugPrint('⚠️ No user/refresh token → forcing logout');
-            await _forceLogout(navigatorKey.currentContext);
+          final currentUser = UserManager().currentUser;
+          final refreshToken = currentUser?.refreshToken ?? '';
+          if (currentUser == null || refreshToken.isEmpty) {
+            debugPrint('⚠️ No refresh token available → logout');
+            await _forceLogout(navigatorKey.currentState);
             return handler.next(e);
           }
 
           try {
-            debugPrint('🔄 Attempting to refresh access token (on 401)');
-            final newAccessToken = await _refreshAccessToken(refreshToken);
-
-            if (newAccessToken == null || newAccessToken.isEmpty) {
-              debugPrint('🚫 Refresh rejected → forcing logout');
-              await _forceLogout(navigatorKey.currentContext);
+            debugPrint('🔄 Attempting refresh after 401');
+            final newAccess = await _refreshAccessToken(refreshToken);
+            if (newAccess == null || newAccess.isEmpty) {
+              debugPrint('🚫 Refresh failed or empty → logout');
+              await _forceLogout(navigatorKey.currentState);
               return handler.next(e);
             }
 
-            final updatedUser = User(
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              nickname: user.nickname,
-              accessToken: newAccessToken,
-              refreshToken: user.refreshToken,
-            );
-            await UserStorage.saveUser(updatedUser);
+            await _saveUpdatedAccessToken(currentUser, newAccess);
 
-            debugPrint('✅ Token refreshed, retrying original request');
-            req.headers['Authorization'] = 'Bearer $newAccessToken';
-            final retryResponse = await dio.fetch(req);
+            debugPrint('✅ Retry original request with refreshed token');
+            final retryResponse = await dio.fetch(
+              req.copyWith(
+                headers: {
+                  ...Map<String, dynamic>.from(req.headers),
+                  'Authorization': 'Bearer $newAccess',
+                },
+                extra: {...req.extra, 'retried': true},
+              ),
+            );
             return handler.resolve(retryResponse);
           } catch (refreshErr) {
             debugPrint('❌ Token refresh failed: $refreshErr');
-            await _forceLogout(navigatorKey.currentContext);
+            await _forceLogout(navigatorKey.currentState);
             return handler.next(e);
           }
         },
@@ -219,14 +219,15 @@ class ApiClient {
     );
   }
 
-  /// refresh 토큰으로 access 토큰 갱신 (동시에 한 번만 수행)
   static Future<String?> _refreshAccessToken(String refreshToken) async {
-    if (_refreshCompleter != null) {
-      debugPrint('⏳ Waiting for ongoing token refresh');
-      return _refreshCompleter!.future;
+    if (_ongoingRefresh != null) {
+      debugPrint('⏳ Waiting for ongoing refresh');
+      return _ongoingRefresh!;
     }
 
-    _refreshCompleter = Completer<String?>();
+    final completer = Completer<String?>();
+    _ongoingRefresh = completer.future;
+
     try {
       final res = await _refreshDio.post(
         _refreshPath,
@@ -235,24 +236,37 @@ class ApiClient {
 
       String? newAccess;
       final data = res.data;
-      if (data is Map<String, dynamic>) {
-        final v = data['access_token'] ?? data['accessToken'];
-        if (v is String) newAccess = v;
-      }
-      debugPrint('🔑 Received new access token');
 
-      _refreshCompleter!.complete(newAccess);
+      if (data is Map<String, dynamic>) {
+        // 응답이 { success, message, data: { access_token: ... } } 형태일 경우
+        final inner = data['data'];
+        if (inner is Map<String, dynamic>) {
+          final v = inner['access_token'] ?? inner['accessToken'];
+          if (v is String) newAccess = v;
+        }
+
+        // 혹시 루트에 직접 있을 경우도 대비 (기존 구조 호환)
+        final rootToken = data['access_token'] ?? data['accessToken'];
+        if (rootToken is String) newAccess ??= rootToken;
+      }
+
+      debugPrint('🔑 Got new access token');
+      completer.complete(newAccess);
       return newAccess;
     } catch (err) {
-      debugPrint('❌ Error refreshing token: $err');
-      _refreshCompleter!.completeError(err);
+      debugPrint('❌ Refresh error: $err');
+      completer.completeError(err);
       rethrow;
     } finally {
-      _refreshCompleter = null;
+      _ongoingRefresh = null;
     }
   }
 
-  /// 액세스 토큰 만료 임박 여부 판단
+  static Future<void> _saveUpdatedAccessToken(User user, String newAccessToken) async {
+    // UserManager 안에서 copyWith + persistence + notify 처리
+    await UserManager().updateAccessToken(newAccessToken);
+  }
+
   static bool _isAccessTokenExpiringSoon(String accessToken,
       {Duration skew = const Duration(minutes: 2)}) {
     try {
@@ -260,12 +274,12 @@ class ApiClient {
       if (exp == null) return false;
       final now = DateTime.now().toUtc();
       return exp.isBefore(now.add(skew));
-    } catch (_) {
-      return false;
+    } catch (e) {
+      debugPrint('⚠️ JWT parse failed: $e');
+      return true;
     }
   }
 
-  /// JWT 토큰 만료 시간 추출
   static DateTime? _getJwtExpiry(String token) {
     final parts = token.split('.');
     if (parts.length != 3) return null;
@@ -289,12 +303,12 @@ class ApiClient {
     return utf8.decode(base64Url.decode(output));
   }
 
-  static Future<void> _forceLogout(BuildContext? context) async {
+  static Future<void> _forceLogout(NavigatorState? navigatorState) async {
     debugPrint('🚪 Forcing logout');
     await UserManager().logout();
-    if (context != null) {
+    if (navigatorState != null) {
       showDialog(
-        context: context,
+        context: navigatorState.context,
         builder: (context) => AlertDialog(
           title: const Text('세션 만료'),
           content: const Text('로그인 세션이 만료되었습니다. 다시 로그인 해주세요.'),

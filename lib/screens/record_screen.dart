@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'recordsuccess_screen.dart';
-import '../models/record.dart';
 import '../models/user.dart';
 import '../api/api_client.dart';
+import '../utils/user_storage.dart';
 
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
@@ -25,24 +25,22 @@ class _RecordScreenState extends State<RecordScreen> {
   ];
 
   final List<String> _emotions = [
-    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감',
+    '행복', '사랑', '기대감', '슬픔', '우울', '분노', '스트레스', '피로', '불안', '무료함', '외로움', '기회감'
   ];
 
   int? _selectedCategoryIndex;
   int? _selectedEmotionIndex;
 
   Future<void> _submitRecord() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString('user');
-
-    if (userJson == null) {
+    final userMap = await UserStorage.loadProfileJson();
+    if (userMap == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('로그인 정보가 없습니다.')),
       );
       return;
     }
 
-    final user = User.fromJson(jsonDecode(userJson));
+    final userId = userMap['userId'];
     final spendItem = _itemController.text.trim();
     final amountStr = _amountController.text.trim();
     final spendCost = int.tryParse(amountStr) ?? 0;
@@ -58,19 +56,24 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     final recordData = {
-      "userId": user.id,
+      "userId": userId,
       "emotionCategoryId": _selectedEmotionIndex,
       "spendCategoryId": _selectedCategoryIndex,
       "spendItem": spendItem,
       "spendCost": spendCost,
-      "spendDate": DateTime.now().toIso8601String().split('.').first,
+      "spendDate": DateTime
+          .now()
+          .toIso8601String()
+          .split('.')
+          .first,
     };
 
     try {
       //디버그용
       print('보내는 데이터: $recordData');
 
-      final response = await ApiClient.dio.post('/records/create', data: recordData);
+      final response = await ApiClient.dio.post(
+          '/records/create', data: recordData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -93,7 +96,8 @@ class _RecordScreenState extends State<RecordScreen> {
       padding: const EdgeInsets.only(bottom: 6, top: 12),
       child: Row(
         children: [
-          const Text('•', style: TextStyle(fontSize: 20, color: Colors.black87)),
+          const Text(
+              '•', style: TextStyle(fontSize: 20, color: Colors.black87)),
           const SizedBox(width: 6),
           Text(
             text,
@@ -106,11 +110,18 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth = 400.0;
-    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final width = MediaQuery
+        .of(context)
+        .size
+        .width;
 
-    final inputDecoration = const InputDecoration(
-      border: UnderlineInputBorder(),
+    double maxWidth = width < 400 ? width * 0.95 : 400;
+    double fontSize = width < 350 ? 14 : 16;
+    double paddingHorizontal = width < 350 ? 12 : 16;
+
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final inputDecoration = InputDecoration(
+      border: const UnderlineInputBorder(),
       isDense: true,
       contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
     );
@@ -121,72 +132,68 @@ class _RecordScreenState extends State<RecordScreen> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
+            padding: EdgeInsets.symmetric(
+                horizontal: paddingHorizontal, vertical: 16),
             child: ListView(
               children: [
                 _buildLabel('기록 일자'),
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12, horizontal: 12),
                   decoration: BoxDecoration(
                     border: Border.all(color: const Color(0xFF1A1A1A)),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     todayStr,
-                    style: const TextStyle(fontSize: 16),
+                    style: TextStyle(fontSize: fontSize),
                   ),
                 ),
-
                 _buildLabel('무엇을 소비했나요?'),
                 DropdownButtonFormField<int>(
-                  decoration: inputDecoration.copyWith(
-                    hintText: '카테고리를 선택하세요',
-                  ),
+                  decoration: inputDecoration.copyWith(hintText: '카테고리를 선택하세요'),
                   value: _selectedCategoryIndex,
                   items: List.generate(_categories.length, (index) {
                     return DropdownMenuItem(
                       value: index + 1,
-                      child: Text(_categories[index]),
+                      child: Text(_categories[index], style: TextStyle(
+                          fontSize: fontSize)),
                     );
                   }),
-                  onChanged: (val) => setState(() => _selectedCategoryIndex = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedCategoryIndex = val),
                 ),
-
                 _buildLabel('소비한 품목'),
                 TextField(
                   controller: _itemController,
                   decoration: inputDecoration.copyWith(
-                    hintText: '소비한 품목을 입력하세요',
-                  ),
+                      hintText: '소비한 품목을 입력하세요'),
+                  style: TextStyle(fontSize: fontSize),
                 ),
-
                 _buildLabel('금액을 적어주세요'),
                 TextField(
                   controller: _amountController,
                   decoration: inputDecoration.copyWith(
-                    hintText: '금액을 숫자로 입력하세요',
-                  ),
+                      hintText: '금액을 숫자로 입력하세요'),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: TextStyle(fontSize: fontSize),
                 ),
-
                 _buildLabel('어떤 감정이었나요?'),
                 DropdownButtonFormField<int>(
-                  decoration: inputDecoration.copyWith(
-                    hintText: '감정을 선택하세요',
-                  ),
+                  decoration: inputDecoration.copyWith(hintText: '감정을 선택하세요'),
                   value: _selectedEmotionIndex,
                   items: List.generate(_emotions.length, (index) {
                     return DropdownMenuItem(
                       value: index + 1,
-                      child: Text(_emotions[index]),
+                      child: Text(_emotions[index], style: TextStyle(
+                          fontSize: fontSize)),
                     );
                   }),
-                  onChanged: (val) => setState(() => _selectedEmotionIndex = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedEmotionIndex = val),
                 ),
-
                 const SizedBox(height: 30),
-
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A1A1A),
@@ -197,9 +204,10 @@ class _RecordScreenState extends State<RecordScreen> {
                     ),
                   ),
                   onPressed: _submitRecord,
-                  child: const Text(
+                  child: Text(
                     '작성 완료',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: fontSize, fontWeight: FontWeight.bold),
                   ),
                 )
               ],
