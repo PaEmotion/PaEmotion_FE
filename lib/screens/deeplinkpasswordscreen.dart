@@ -102,7 +102,7 @@ class _DeepLinkResetPasswordScreenState extends State<DeepLinkResetPasswordScree
         setState(() =>
         _status = '비밀번호가 성공적으로 변경되었습니다. 로그인 화면으로 이동합니다.');
         Future.delayed(const Duration(seconds: 2), () {
-          Navigator.of(context).pushReplacementNamed('/login');
+          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
         });
       } else {
         final msg = response.data?['message'] ?? response.statusMessage;
