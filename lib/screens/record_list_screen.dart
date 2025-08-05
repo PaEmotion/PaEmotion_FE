@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/record.dart';
-import 'dart:convert';
 import 'record_edit_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
-import '../models/user.dart';
-import '../utils/reactive_utils.dart';
+
+const Map<int, String> categoryMap = {
+  1: '쇼핑',
+  2: '배달음식',
+  3: '외식',
+  4: '카페',
+  5: '취미',
+  6: '뷰티',
+  7: '건강',
+  8: '자기계발',
+  9: '선물',
+  10: '여행',
+  11: '모임',
+};
 
 class RecordListScreen extends StatefulWidget {
-  final String? selectedDate; // yyyy-MM-dd 형식, null이면 오늘 날짜
+  final String? selectedDate;
 
   const RecordListScreen({super.key, this.selectedDate});
 
@@ -28,27 +38,16 @@ class _RecordListScreenState extends State<RecordListScreen> {
   }
 
   Future<void> _loadRecordsForDate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('user');
-
-    if (jsonString == null) {
-      setState(() {
-        _dateRecords = [];
-      });
-      return;
-    }
-
-    final userMap = jsonDecode(jsonString);
-    final user = User.fromJson(userMap);
-    final userId = user.id;
-
-    final targetDate =
-        widget.selectedDate ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
-
     try {
+      final today = DateTime.now();
+      final tomorrow = today.add(const Duration(days: 1));
+
       final response = await ApiClient.dio.get(
-        '/records/$userId/',
-        queryParameters: {'spendDate': targetDate},
+        '/records/me',
+        queryParameters: {
+          'startDate': DateFormat('yyyy-MM-dd').format(today),
+          'endDate': DateFormat('yyyy-MM-dd').format(tomorrow),
+        },
       );
 
       if (response.statusCode == 200) {
@@ -90,15 +89,25 @@ class _RecordListScreenState extends State<RecordListScreen> {
     return false;
   }
 
+
+  double _clampFont(double size, BuildContext context) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final computed = size * scale;
+    return computed.clamp(12.0, 24.0);
+  }
+
+  EdgeInsets _responsivePadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final horizontal = width < 360 ? 12.0 : 20.0;
+    return EdgeInsets.symmetric(horizontal: horizontal, vertical: 8);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final titleFont = rFont(context, 18);
-    final bodyFont = rFont(context, 14);
-    final listFont = rFont(context, 16);
-    final paddingH = rWidth(context, 16);
-    final paddingV = rHeight(context, 14);
-    final sectionGap = rHeight(context, 12);
-    final buttonRadius = rWidth(context, 10);
+    final titleFontSize = _clampFont(18, context);
+    final bodyFontSize = _clampFont(14, context);
+    final listFontSize = _clampFont(16, context);
+    final buttonRadius = 12.0;
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -106,104 +115,96 @@ class _RecordListScreenState extends State<RecordListScreen> {
         appBar: AppBar(
           title: Text(
             '${widget.selectedDate ?? '오늘'} 소비기록 수정',
-            style: TextStyle(fontSize: titleFont),
+            style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w600),
           ),
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, size: rWidth(context, 22)),
+            icon: Icon(Icons.arrow_back, size: 24),
             onPressed: () => _onWillPop(),
           ),
+          toolbarHeight: 56,
+          titleSpacing: 0,
         ),
-        body: Padding(
-          padding: EdgeInsets.symmetric(horizontal: paddingH),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: sectionGap),
-              Text(
-                '수정하고 싶은 내역을 선택해주세요.',
-                style: TextStyle(
-                  fontSize: listFont,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: sectionGap),
-              Expanded(
-                child: _dateRecords.isEmpty
-                    ? Center(
-                  child: Text(
-                    '${widget.selectedDate ?? '오늘'}의 소비 기록이 없습니다.',
-                    style: TextStyle(fontSize: bodyFont),
+        body: LayoutBuilder(builder: (context, constraints) {
+          return Padding(
+            padding: _responsivePadding(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 16),
+                Text(
+                  '수정하고 싶은 내역을 선택해주세요.',
+                  style: TextStyle(
+                    fontSize: listFontSize,
+                    fontWeight: FontWeight.w600,
                   ),
-                )
-                    : ListView.builder(
-                  itemCount: _dateRecords.length,
-                  itemBuilder: (context, index) {
-                    final record = _dateRecords[index];
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                          vertical: rHeight(context, 6)),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            vertical: paddingV,
-                            horizontal: paddingH,
-                          ),
-                          backgroundColor: Colors.grey[200],
-                          foregroundColor: Colors.black87,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(buttonRadius),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () => _onRecordTap(record),
-                        child: Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                '${categoryMap[record.spend_category] ?? record.spend_category.toString()} - ${record.spendItem}',
-                                style: TextStyle(
-                                  fontSize: listFont,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(width: rWidth(context, 8)),
-                            Text(
-                              '${NumberFormat('#,###').format(record.spendCost)}원',
-                              style: TextStyle(
-                                fontSize: listFont,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
                 ),
-              ),
-            ],
-          ),
-        ),
+                SizedBox(height: 12),
+                Expanded(
+                  child: _dateRecords.isEmpty
+                      ? Center(
+                    child: Text(
+                      '${widget.selectedDate ?? '오늘'}의 소비 기록이 없습니다.',
+                      style: TextStyle(fontSize: bodyFontSize),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                      : ListView.builder(
+                    itemCount: _dateRecords.length,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemBuilder: (context, index) {
+                      final record = _dateRecords[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 56),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                              backgroundColor: Colors.grey[100],
+                              foregroundColor: Colors.black87,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(buttonRadius),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () => _onRecordTap(record),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${categoryMap[record.spend_category] ?? record.spend_category.toString()} - ${record.spendItem}',
+                                    style: TextStyle(
+                                      fontSize: listFontSize,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${NumberFormat('#,###').format(record.spendCost)}원',
+                                  style: TextStyle(
+                                    fontSize: listFontSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
 }
-
-const Map<int, String> categoryMap = {
-  1: '쇼핑',
-  2: '배달음식',
-  3: '외식',
-  4: '카페',
-  5: '취미',
-  6: '뷰티',
-  7: '건강',
-  8: '자기계발',
-  9: '선물',
-  10: '여행',
-  11: '모임',
-};
