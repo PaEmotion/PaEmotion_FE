@@ -60,7 +60,6 @@ class ReportUtils {
     await prefs.remove(_lastUpdatedKey);
   }
 
-  /// 서버에서 기간 내 리포트 받아오기
   static Future<List<Report>> fetchReportsFromApi({
     required int userId,
     required String startDate, // yyyy-MM-dd
@@ -82,16 +81,23 @@ class ReportUtils {
       print('🌐 응답 상태코드: ${response.statusCode}');
       print('🌐 응답 데이터: ${response.data}');
 
-      final data = response.data as List;
+      final data = response.data;
+
+      if (data is! List) {
+        print('❌ 서버 응답이 List 형식이 아님: $data');
+        return [];
+      }
+
       return data.map((e) => Report.fromJson(e)).toList();
     } on DioException catch (e) {
-      print('리포트 API 호출 실패');
+      print('❌ 리포트 API 호출 실패');
       print('statusCode: ${e.response?.statusCode}');
       print('response: ${e.response?.data}');
       print('message: ${e.message}');
       return [];
-    } catch (e) {
-      print('알 수 없는 에러 발생: $e');
+    } catch (e, stackTrace) {
+      print('❌ 알 수 없는 에러 발생: $e');
+      print(stackTrace);
       return [];
     }
   }
