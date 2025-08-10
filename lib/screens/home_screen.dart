@@ -8,6 +8,7 @@ import 'dart:math';
 import 'report_screen.dart';
 import 'budget_screen.dart';
 import 'challenge_screen.dart';
+import 'challenge_search_screen.dart';
 import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
@@ -250,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final titleFontSize = screenWidth * 0.06;
-    final bodyFontSize = screenWidth * 0.045;
+    final bodyFontSize = screenWidth * 0.040;
     final numberFormat = NumberFormat('#,###');
     final totalAmount = _todaysRecords.fold(0, (sum, r) => sum + r.spendCost);
     final topCategory = _getTopCategory(_todaysRecords);
@@ -408,11 +409,24 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () =>
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          ),
+          if (_selectedIndex == 3) // 챌린지 탭일 때 마이페이지 버튼 -> 검색 버튼 변경
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChallengeSearchScreen()),
+                );
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyPageScreen()),
+              ),
+            ),
         ],
       ),
       body: _buildBody(),
