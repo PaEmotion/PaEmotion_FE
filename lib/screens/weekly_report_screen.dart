@@ -247,12 +247,12 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                     children: [
                       _buildReceiptCard(monday, size),
                       SizedBox(height: padding * 2),
-                      if (categoryData.isNotEmpty) _buildChartBlock(
-                          '카테고리별 소비', categoryData, categoryColors,
-                          chartHeight),
-                      SizedBox(height: padding * 2),
                       if (emotionData.isNotEmpty) _buildChartBlock(
-                          '감정별 소비', emotionData, emotionColors, chartHeight),
+                          '감정별 소비 내역', emotionData, emotionColors, chartHeight),
+                      SizedBox(height: padding * 2),
+                      if (categoryData.isNotEmpty) _buildChartBlock(
+                          '카테고리별 소비 내역', categoryData, categoryColors,
+                          chartHeight),
                     ],
                   ),
                 );
@@ -310,7 +310,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           ),
         ),
         SizedBox(height: 12),
-        _buildDetailList('$title 내역', data, colors),
+        _buildDetailList('', data, colors),
       ],
     );
   }
@@ -338,7 +338,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {
-            // 한 줄에 두 개씩 배치 (spacing 고려)
             final double spacing = 16;
             final double itemWidth = (constraints.maxWidth - spacing) / 2;
 

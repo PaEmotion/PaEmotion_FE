@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // SystemNavigator.pop()용
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import 'utils/user_manager.dart';
@@ -13,57 +14,31 @@ import 'screens/deeplinkfaliedpasswordscreen.dart';
 import 'screens/home_screen.dart';
 import 'screens/deeplinkpasswordscreen.dart';
 import 'api/api_client.dart';
-import 'screens/loadingscreen.dart';
+import 'screens/onboarding.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    return const Material(
-      color: Colors.white,
-      child: Center(
-        child: CircularProgressIndicator(color: Colors.black),
-      ),
-    );
-  };
-
-  // 프레임워크 전체 에러 핸들링
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    runApp(const WhiteLoadingFallbackApp());
-  };
-
-  // 비동기 예외 핸들링
-  runZonedGuarded(() async {
-    runApp(const MyApp());
-  }, (error, stackTrace) {
-    runApp(const WhiteLoadingFallbackApp());
-  });
-
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
 
-  runZonedGuarded(() async {
-    // 네트워크 연결 체크
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      runApp(const OfflineApp());
-      return;
-    }
+  // 네트워크 연결 체크
+  var connectivityResult = await Connectivity().checkConnectivity();
+  if (connectivityResult == ConnectivityResult.none) {
+    runApp(const OfflineApp());
+    return;
+  }
 
-    // 사용자/토큰 로컬 초기화
-    await UserManager().init();
-    ApiClient.initInterceptor(navigatorKey);
-    await ApiClient.ensureValidAccessToken();
+  // 사용자/토큰 로컬 초기화
+  await UserManager().init();
+  ApiClient.initInterceptor(navigatorKey);
+  await ApiClient.ensureValidAccessToken();
 
-    runApp(const MyApp());
-  }, (error, stackTrace) {
-    // 여기서 에러 UI 띄움
-    runApp(const WhiteLoadingFallbackApp());
-  });
+  runApp(const MyApp());
 }
-
 
 class OfflineApp extends StatelessWidget {
   const OfflineApp({super.key});
@@ -100,13 +75,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool? isLoggedIn;
+  bool? _hasSeenOnboarding; // onboarding seen check
 
   final AppLinks _appLinks = AppLinks();
   StreamSubscription? _sub;
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
   Uri? _initialUri;
-
   bool _isOfflineDialogShown = false;
 
   @override
@@ -115,6 +90,15 @@ class _MyAppState extends State<MyApp> {
     _initLoginState();
     _initDeepLink();
     _listenConnectivityChanges();
+    _checkOnboardingSeen();
+  }
+
+  Future<void> _checkOnboardingSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool('seenOnboarding') ?? false;
+    setState(() {
+      _hasSeenOnboarding = seen;
+    });
   }
 
   Future<void> _initLoginState() async {
@@ -213,6 +197,19 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hasSeenOnboarding == null || isLoggedIn == null) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(
+              color: Colors.black.withOpacity(0.85),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 딥링크 비밀번호 재설정
     if (_initialUri?.path == '/reset-password') {
       final token = _initialUri!.queryParameters['token'];
       return MaterialApp(
@@ -232,15 +229,21 @@ class _MyAppState extends State<MyApp> {
       );
     }
 
-    if (isLoggedIn == null) {
+    // 온보딩 안 봤으면 온보딩 화면 먼저
+    if (_hasSeenOnboarding == false) {
       return MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(
-              color: Colors.black.withOpacity(0.85),
-            ),
-          ),
-        ),
+        navigatorKey: navigatorKey,
+        routes: {
+          '/onboarding': (context) => const OnboardingScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/home': (context) => const HomeScreen(),
+        },
+        title: 'PaEmotion',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        theme: _lightTheme(),
+        darkTheme: _darkTheme(),
+        home: const OnboardingScreen(),
       );
     }
 

@@ -61,7 +61,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
 
   String _formatChallengePeriod(DateTime endDate) {
     final startDate = endDate.subtract(const Duration(days: 6));
-    String fmt(DateTime d) => '${d.year}.${_twoDigits(d.month)}.${_twoDigits(d.day)}';
+    String fmt(DateTime d) =>
+        '${d.year}.${_twoDigits(d.month)}.${_twoDigits(d.day)}';
     return '${fmt(startDate)} ~ ${fmt(endDate)}';
   }
 
@@ -132,14 +133,17 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
     if (challenge.publicityType) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('참여하기'),
-          content: Text('${challenge.name} 챌린지에 참여하시겠습니까?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('참여')),
-          ],
-        ),
+        builder: (_) =>
+            AlertDialog(
+              title: const Text('참여하기'),
+              content: Text('${challenge.name} 챌린지에 참여하시겠습니까?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false),
+                    child: const Text('취소')),
+                TextButton(onPressed: () => Navigator.pop(context, true),
+                    child: const Text('참여')),
+              ],
+            ),
       );
       if (confirmed == true) {
         await _joinChallenge(challenge.challengeId);
@@ -148,18 +152,21 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
       final passwordController = TextEditingController();
       final joined = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text('${challenge.name} 비공개 챌린지 참여'),
-          content: TextField(
-            controller: passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: '비밀번호'),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('참여')),
-          ],
-        ),
+        builder: (_) =>
+            AlertDialog(
+              title: Text('${challenge.name} 비공개 챌린지 참여'),
+              content: TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '비밀번호'),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false),
+                    child: const Text('취소')),
+                TextButton(onPressed: () => Navigator.pop(context, true),
+                    child: const Text('참여')),
+              ],
+            ),
       );
       if (joined == true) {
         final pw = passwordController.text.trim();
@@ -238,18 +245,29 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
   }
 
   double rWidth(BuildContext context, double base) {
-    final w = MediaQuery.of(context).size.width;
+    final w = MediaQuery
+        .of(context)
+        .size
+        .width;
     return base * (w / 390);
   }
 
   double rHeight(BuildContext context, double base) {
-    final h = MediaQuery.of(context).size.height;
+    final h = MediaQuery
+        .of(context)
+        .size
+        .height;
     return base * (h / 844);
   }
 
   double rFont(BuildContext context, double base) {
-    final scale = MediaQuery.of(context).textScaleFactor;
-    return base * scale * (MediaQuery.of(context).size.width / 390);
+    final scale = MediaQuery
+        .of(context)
+        .textScaleFactor;
+    return base * scale * (MediaQuery
+        .of(context)
+        .size
+        .width / 390);
   }
 
   Widget _buildMyChallengeTab() {
@@ -264,10 +282,12 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
 
     int? myIdx;
     if (_currentUserId != null) {
-      final idx = detail.participantsInfo.indexWhere((p) => p.userId == _currentUserId);
+      final idx = detail.participantsInfo.indexWhere((p) =>
+      p.userId == _currentUserId);
       if (idx >= 0) myIdx = idx;
     }
-    final String? myGuineaName = (myIdx != null) ? guineaNames[myIdx % guineaNames.length] : null;
+    final String? myGuineaName = (myIdx != null) ? guineaNames[myIdx %
+        guineaNames.length] : null;
 
     final bool isPositive = detail.challengeType == true;
     final bool isTeamComplete = detail.teamProgressRate >= 100;
@@ -317,7 +337,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.people_outline, color: Colors.black87, size: rWidth(context, 20)),
+                        Icon(Icons.people_outline, color: Colors.black87,
+                            size: rWidth(context, 20)),
                         SizedBox(width: rWidth(context, 6)),
                         Text(
                           '참여자 수',
@@ -343,7 +364,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.grass, color: Colors.black87, size: rWidth(context, 20)),
+                        Icon(Icons.grass, color: Colors.black87,
+                            size: rWidth(context, 20)),
                         SizedBox(width: rWidth(context, 6)),
                         Text(
                           '기니피그 풀 상태',
@@ -355,7 +377,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                       ],
                     ),
                     SizedBox(height: rHeight(context, 4)),
-                    Text(feedText, style: TextStyle(fontSize: rFont(context, 16))),
+                    Text(feedText,
+                        style: TextStyle(fontSize: rFont(context, 16))),
                   ],
                 ),
               ),
@@ -364,7 +387,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
           SizedBox(height: rHeight(context, 16)),
           Row(
             children: [
-              Icon(Icons.flag, color: Colors.black87, size: rWidth(context, 20)),
+              Icon(
+                  Icons.flag, color: Colors.black87, size: rWidth(context, 20)),
               SizedBox(width: rWidth(context, 6)),
               Text(
                 '개인별 목표',
@@ -383,7 +407,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
           SizedBox(height: rHeight(context, 16)),
           Row(
             children: [
-              Icon(Icons.show_chart, color: Colors.black87, size: rWidth(context, 20)),
+              Icon(Icons.show_chart, color: Colors.black87,
+                  size: rWidth(context, 20)),
               SizedBox(width: rWidth(context, 6)),
               Text(
                 '팀 진행률',
@@ -408,27 +433,30 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
             ),
           ),
           SizedBox(height: rHeight(context, 10)),
-        Center(
-          child: Text(
-            isTeamComplete && isPositive
-                ? // 100% & 긍정 챌린지인 경우, 진행중 문구 없이 특별 메시지
-            '모든 밥을 주는 데 성공했어요!\n기니피그가 행복해졌어요.'
-                : // 그 외는 기존 흐름: 진행률 + 상황 메시지
-            '현재 ${detail.teamProgressRate.toStringAsFixed(1)}% 만큼 진행중이에요.\n'
-                '${isPositive ? "기니피그가 밥을 기다리고 있어요!" : "계속해서 기니피그의 밥을 지켜주세요!"}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: rFont(context, 14),
+          Center(
+            child: Text(
+              isTeamComplete && isPositive
+                  ? // 100% & 긍정 챌린지인 경우, 진행중 문구 없이 특별 메시지
+              '모든 밥을 주는 데 성공했어요!\n기니피그가 행복해졌어요.'
+                  : // 그 외는 기존 흐름: 진행률 + 상황 메시지
+              '현재 ${detail.teamProgressRate.toStringAsFixed(1)}% 만큼 진행중이에요.\n'
+                  '${isPositive
+                  ? "기니피그가 밥을 기다리고 있어요!"
+                  : "계속해서 기니피그의 밥을 지켜주세요!"}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: rFont(context, 14),
+              ),
             ),
           ),
-        ),
           SizedBox(height: rHeight(context, 16)),
           LayoutBuilder(
             builder: (context, constraints) {
               final parent = constraints.maxWidth;
               final target = parent * 0.9;
-              final width = target.clamp(rWidth(context, 180), rWidth(context, 420));
+              final width = target.clamp(
+                  rWidth(context, 180), rWidth(context, 420));
               return Align(
                 alignment: Alignment.center,
                 child: SizedBox(
@@ -439,7 +467,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                       value: teamProgressValue,
                       minHeight: rHeight(context, 8),
                       backgroundColor: Colors.grey[300],
-                      color: detail.teamProgressRate >= 100 ? Colors.green : Colors.lightGreen,
+                      color: detail.teamProgressRate >= 100
+                          ? Colors.green
+                          : Colors.lightGreen,
                     ),
                   ),
                 ),
@@ -473,7 +503,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                   ),
                   child: Text(
                     '내 기니피그: $myGuineaName',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: rFont(context, 14)),
+                    style: TextStyle(fontWeight: FontWeight.w600,
+                        fontSize: rFont(context, 14)),
                   ),
                 ),
             ],
@@ -481,13 +512,18 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
           SizedBox(height: rHeight(context, 12)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: detail.participantsInfo.asMap().entries.map((entry) {
+            children: detail.participantsInfo
+                .asMap()
+                .entries
+                .map((entry) {
               final index = entry.key;
               final p = entry.value;
               final nickname = guineaNames[index % guineaNames.length];
-              final bool isMe = (_currentUserId != null && p.userId == _currentUserId);
+              final bool isMe = (_currentUserId != null &&
+                  p.userId == _currentUserId);
               final double progressValue =
-                  ((p.contributionRate).clamp(0, 100) as num).toDouble() / 100.0;
+                  ((p.contributionRate).clamp(0, 100) as num).toDouble() /
+                      100.0;
 
               return Padding(
                 padding: EdgeInsets.symmetric(vertical: rHeight(context, 8)),
@@ -498,7 +534,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                       children: [
                         CircleAvatar(
                           radius: rWidth(context, 18),
-                          backgroundImage: AssetImage(_assetForGuineaName(nickname)),
+                          backgroundImage: AssetImage(
+                              _assetForGuineaName(nickname)),
                           backgroundColor: Colors.transparent,
                         ),
                         SizedBox(width: rWidth(context, 8)),
@@ -517,7 +554,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                           '${p.contributionRate.toStringAsFixed(1)}%',
                           style: TextStyle(
                             color: p.isMost ? Colors.orange : Colors.black87,
-                            fontWeight: p.isMost ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: p.isMost ? FontWeight.bold : FontWeight
+                                .normal,
                             fontSize: rFont(context, 14),
                           ),
                         ),
@@ -528,18 +566,21 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                       builder: (context, constraints) {
                         final parent = constraints.maxWidth;
                         final target = parent * 0.9;
-                        final width = target.clamp(rWidth(context, 180), rWidth(context, 420));
+                        final width = target.clamp(
+                            rWidth(context, 180), rWidth(context, 420));
                         return Align(
                           alignment: Alignment.center,
                           child: SizedBox(
                             width: width,
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(rWidth(context, 8)),
+                              borderRadius: BorderRadius.circular(
+                                  rWidth(context, 8)),
                               child: LinearProgressIndicator(
                                 value: progressValue,
                                 minHeight: rHeight(context, 8),
                                 backgroundColor: Colors.grey[300],
-                                color: p.isMost ? Colors.orange : Colors.lightGreen,
+                                color: p.isMost ? Colors.orange : Colors
+                                    .lightGreen,
                               ),
                             ),
                           ),
@@ -569,7 +610,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
       itemCount: _allChallenges.length,
       itemBuilder: (context, index) {
         final challenge = _allChallenges[index];
-        final bgColor = challenge.challengeType ? Colors.yellow[100] : Colors.blue[100];
+        final bgColor = challenge.challengeType ? Colors.yellow[100] : Colors
+            .blue[100];
 
         return Card(
           color: bgColor,
@@ -587,7 +629,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
               children: [
                 Text(
                   challenge.publicityType ? '공개 챌린지' : '비공개 챌린지',
-                  style: TextStyle(fontSize: rFont(context, 12), color: Colors.blueGrey[700]),
+                  style: TextStyle(fontSize: rFont(context, 12),
+                      color: Colors.blueGrey[700]),
                 ),
                 SizedBox(height: rHeight(context, 4)),
                 Text(
@@ -603,7 +646,11 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
             subtitle: Padding(
               padding: EdgeInsets.only(top: rHeight(context, 8)),
               child: Text(
-                '목표: ${challenge.goalCount}개, 참여자: ${challenge.participantCount}명\n종료일: ${challenge.endDate.toIso8601String().split('T').first}',
+                '목표: ${challenge.goalCount}개, 참여자: ${challenge
+                    .participantCount}명\n종료일: ${challenge.endDate
+                    .toIso8601String()
+                    .split('T')
+                    .first}',
                 style: TextStyle(fontSize: rFont(context, 14)),
               ),
             ),
@@ -622,41 +669,48 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
   void _showChallengeDetailDialog(Challenge challenge) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(challenge.name),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: rHeight(context, 6)),
-              Text('챌린지 타입: ${challenge.challengeType ? '기니피그 밥 주기(긍정 소비)' : '기니피그 밥 지키기(부정 소비)'}'),
-              SizedBox(height: rHeight(context, 6)),
-              Text('공개 여부: ${challenge.publicityType ? '공개' : '비공개'}'),
-              SizedBox(height: rHeight(context, 6)),
-              Text(
-                challenge.challengeType
-                    ? '개인별 목표 소비 개수: ${challenge.goalCount}번'
-                    : '개인별 목표 소비 개수: ${challenge.goalCount}번 이하',
+      builder: (_) =>
+          AlertDialog(
+            title: Text(challenge.name),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: rHeight(context, 6)),
+                  Text('챌린지 타입: ${challenge.challengeType
+                      ? '기니피그 밥 주기(긍정 소비)'
+                      : '기니피그 밥 지키기(부정 소비)'}'),
+                  SizedBox(height: rHeight(context, 6)),
+                  Text('공개 여부: ${challenge.publicityType ? '공개' : '비공개'}'),
+                  SizedBox(height: rHeight(context, 6)),
+                  Text(
+                    challenge.challengeType
+                        ? '개인별 목표 소비 개수: ${challenge.goalCount}번'
+                        : '개인별 목표 소비 개수: ${challenge.goalCount}번 이하',
+                  ),
+                  SizedBox(height: rHeight(context, 6)),
+                  Text('참여자 수: ${challenge.participantCount}명'),
+                  SizedBox(height: rHeight(context, 6)),
+                  Text('종료일: ${challenge.endDate
+                      .toIso8601String()
+                      .split('T')
+                      .first}'),
+                  SizedBox(height: rHeight(context, 6)),
+                ],
               ),
-              SizedBox(height: rHeight(context, 6)),
-              Text('참여자 수: ${challenge.participantCount}명'),
-              SizedBox(height: rHeight(context, 6)),
-              Text('종료일: ${challenge.endDate.toIso8601String().split('T').first}'),
-              SizedBox(height: rHeight(context, 6)),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기')),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showJoinChallengeDialog(challenge);
+                },
+                child: const Text('참여하기'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showJoinChallengeDialog(challenge);
-            },
-            child: const Text('참여하기'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -690,37 +744,32 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        title: Text(
-          '챌린지',
-          style: TextStyle(fontSize: rFont(context, 18), color: Colors.black87),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: Colors.black87, size: rWidth(context, 24)),
-            onPressed: _goToSearchChallenge,
-            tooltip: '챌린지 검색',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.black87,
-          unselectedLabelColor: Colors.black38,
-          indicatorColor: Colors.black87,
-          tabs: [
-            Tab(child: Text('내 챌린지', style: TextStyle(fontSize: rFont(context, 14)))),
-            Tab(child: Text('전체 챌린지', style: TextStyle(fontSize: rFont(context, 14)))),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildMyChallengeTab(),
-          _buildAllChallengesTab(),
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: Colors.black87,
+              unselectedLabelColor: Colors.black38,
+              indicatorColor: Colors.black87,
+              tabs: [
+                Tab(child: Text(
+                    '내 챌린지', style: TextStyle(fontSize: rFont(context, 14)))),
+                Tab(child: Text(
+                    '전체 챌린지', style: TextStyle(fontSize: rFont(context, 14)))),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildMyChallengeTab(),
+                _buildAllChallengesTab(),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: _myChallengeDetail == null

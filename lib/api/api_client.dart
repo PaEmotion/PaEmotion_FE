@@ -8,7 +8,7 @@ import '../models/user.dart';
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'https://19106eca6741.ngrok-free.app',
+      baseUrl: 'https://d3445b7362f0.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
@@ -17,7 +17,7 @@ class ApiClient {
 
   static final Dio _refreshDio = Dio(
     BaseOptions(
-      baseUrl: 'https://19106eca6741.ngrok-free.app',
+      baseUrl: 'https://d3445b7362f0.ngrok-free.app',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
