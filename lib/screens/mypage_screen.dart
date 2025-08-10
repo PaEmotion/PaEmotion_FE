@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
 import '../api/api_client.dart';
@@ -189,25 +188,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       },
                       trailing: const Icon(Icons.chevron_right),
                     ),
-                    const Spacer(),
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 300),
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.logout),
-                          label: Text('로그아웃', style: bodyStyle.copyWith(color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: _logout,
-                        ),
-                      ),
+
+                    const Divider(height: 40),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.logout),
+                      title: Text('로그아웃'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _logout,
                     ),
                   ],
                 ),
