@@ -110,7 +110,7 @@ class _ReportScreenState extends State<ReportScreen>  {
                 _buildReportButton(
                   context,
                   title: '월간 리포트',
-                  subtitle: 'AI가 분석한 나의 월별 감정소비 패턴 확인하기',
+                  subtitle: '월별 소비 유형, 감정 카테고리 분석, 지출 순위 확인',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const MonthlyReportScreen()),
@@ -123,7 +123,7 @@ class _ReportScreenState extends State<ReportScreen>  {
                 _buildReportButton(
                   context,
                   title: '주간 리포트',
-                  subtitle: 'AI가 요약해주는 주별 나의 소비 확인하기',
+                  subtitle: '주별 소비, 감정 분석과 다음주 지출 예측',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const WeeklyReportScreen()),

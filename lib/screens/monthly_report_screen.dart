@@ -260,9 +260,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         ),
                       ),
                       SizedBox(height: padding * 2),
-                      if (categoryData.isNotEmpty) _buildChartBlock('카테고리별 소비', categoryData, categoryColors, chartHeight),
+                      if (emotionData.isNotEmpty) _buildChartBlock('감정별 소비 내역', emotionData, emotionColors, chartHeight),
                       SizedBox(height: padding * 2),
-                      if (emotionData.isNotEmpty) _buildChartBlock('감정별 소비', emotionData, emotionColors, chartHeight),
+                      if (categoryData.isNotEmpty) _buildChartBlock('카테고리별 소비 내역', categoryData, categoryColors, chartHeight),
                     ],
                   ),
                 );
@@ -291,7 +291,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
           ),
         ),
         SizedBox(height: 12),
-        _buildDetailList('$title 내역', data, colors),
+        _buildDetailList('', data, colors),
       ],
     );
   }

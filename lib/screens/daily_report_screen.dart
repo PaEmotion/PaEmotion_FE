@@ -367,6 +367,22 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     _buildSpendList(records, smallFontSize),
                     SizedBox(
                       height: pieHeight,
+                      child: emotionPie.isEmpty
+                          ? const Center(child: Text('데이터 없음'))
+                          : PieChart(
+                        PieChartData(
+                          sections: emotionPie,
+                          sectionsSpace: 2,
+                          centerSpaceRadius: pieHeight * 0.3,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: smallFontSize),
+                    _buildAllList(
+                        '감정별 소비 내역', emotionData, emotionColors, smallFontSize),
+                    SizedBox(height: smallFontSize),
+                    SizedBox(
+                      height: pieHeight,
                       child: categoryPie.isEmpty
                           ? const Center(child: Text('데이터 없음'))
                           : PieChart(
@@ -381,21 +397,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     _buildAllList(
                         '카테고리별 소비 내역', categoryData, categoryColors, smallFontSize),
                     SizedBox(height: sectionSpacing),
-                    SizedBox(
-                      height: pieHeight,
-                      child: emotionPie.isEmpty
-                          ? const Center(child: Text('데이터 없음'))
-                          : PieChart(
-                        PieChartData(
-                          sections: emotionPie,
-                          sectionsSpace: 2,
-                          centerSpaceRadius: pieHeight * 0.3,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: smallFontSize),
-                    _buildAllList(
-                        '감정별 소비 내역', emotionData, emotionColors, smallFontSize),
                   ],
                 ),
               ),
