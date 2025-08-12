@@ -5,10 +5,10 @@ class PwResetScreen extends StatefulWidget {
   const PwResetScreen({super.key});
 
   @override
-  State<PwResetScreen> createState() => _MpPwResetScreenState();
+  State<PwResetScreen> createState() => _PwResetScreenState();
 }
 
-class _MpPwResetScreenState extends State<PwResetScreen> {
+class _PwResetScreenState extends State<PwResetScreen> {
   final _emailController = TextEditingController();
   bool _loading = false;
   String? _status;
@@ -120,21 +120,6 @@ class _MpPwResetScreenState extends State<PwResetScreen> {
               ),
             ],
             const Spacer(),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).pushNamed('/deeplink-failed-password');
-              },
-              child: Text(
-                '이메일에 온 링크를 눌렀을 때 앱으로 연결이 되지 않은 경우',
-                style: TextStyle(
-                  fontSize: fontSize * 0.7,
-                  color: Colors.grey,
-                  decoration: TextDecoration.underline,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            SizedBox(height: fontSize * 0.9),
           ],
         ),
       ),

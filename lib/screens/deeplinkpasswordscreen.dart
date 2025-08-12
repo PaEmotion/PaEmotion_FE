@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 import '../api/api_client.dart';
-import '../utils/reactive_utils.dart';
 
 class DeepLinkResetPasswordScreen extends StatefulWidget {
   final String? initialToken;
@@ -133,109 +132,128 @@ class _DeepLinkResetPasswordScreenState extends State<DeepLinkResetPasswordScree
   @override
   Widget build(BuildContext context) {
     final hasToken = _token != null;
-    final horizontalPadding = rWidth(context, 16);
-    final spacingSmall = rHeight(context, 12);
-    final spacingMedium = rHeight(context, 20);
-    final inputRadius = rWidth(context, 10);
-    final buttonHeight = rHeight(context, 48);
+
+    final media = MediaQuery.of(context);
+    final horizontalPadding = media.size.width * 0.04;
+    final verticalPadding = media.size.height * 0.02;
+    final spacingSmall = media.size.height * 0.015;
+    final spacingMedium = media.size.height * 0.03;
+    final inputRadius = media.size.width * 0.025;
+    final buttonHeight = media.size.height * 0.065;
+    final fontSizeSmall = media.size.width * 0.035;
+    final fontSizeMedium = media.size.width * 0.045;
+    final fontSizeLarge = media.size.width * 0.055;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           '비밀번호 재설정',
-          style: TextStyle(fontSize: rFont(context, 18), fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: fontSizeLarge, fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 1,
       ),
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: spacingSmall),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (hasToken) ...[
-              Text(
-                '링크에서 토큰을 감지했습니다. 새 비밀번호를 입력하세요.',
-                style: TextStyle(fontSize: rFont(context, 14)),
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: media.size.height - media.padding.top - media.padding.bottom - kToolbarHeight,
               ),
-            ] else ...[
-              Text(
-                '유효한 재설정 링크가 감지되지 않았습니다.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: rFont(context, 16),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hasToken) ...[
+                      Text(
+                        '새 비밀번호를 입력하세요.',
+                        style: TextStyle(fontSize: fontSizeMedium),
+                      ),
+                    ] else ...[
+                      Text(
+                        '유효한 재설정 토큰이 감지되지 않았습니다.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSizeLarge,
+                        ),
+                      ),
+                      SizedBox(height: spacingSmall),
+                      Text(
+                        '아래 버튼을 눌러 비밀번호 재설정 이메일을 다시 요청하세요.',
+                        style: TextStyle(fontSize: fontSizeSmall),
+                      ),
+                      SizedBox(height: spacingSmall),
+                      TextButton(
+                        onPressed: _goRequestAgain,
+                        child: Text(
+                          '비밀번호 재설정 이메일 다시 요청',
+                          style: TextStyle(fontSize: fontSizeSmall),
+                        ),
+                      ),
+                      Divider(height: spacingMedium * 1.5),
+                    ],
+                    SizedBox(height: spacingSmall / 2),
+                    TextField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: '새 비밀번호',
+                        hintText: '영문 + 숫자 + 특수문자 포함, 8자 이상',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(inputRadius),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding / 1.5,
+                          vertical: spacingSmall * 1.2,
+                        ),
+                      ),
+                      obscureText: true,
+                      style: TextStyle(fontSize: fontSizeMedium),
+                    ),
+                    SizedBox(height: spacingMedium),
+                    SizedBox(
+                      width: double.infinity,
+                      height: buttonHeight,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(inputRadius),
+                          ),
+                        ),
+                        child: _loading
+                            ? SizedBox(
+                          width: fontSizeMedium,
+                          height: fontSizeMedium,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : Text(
+                          '변경하기',
+                          style: TextStyle(fontSize: fontSizeLarge),
+                        ),
+                      ),
+                    ),
+                    if (_status != null) ...[
+                      SizedBox(height: spacingSmall),
+                      Text(
+                        _status!,
+                        style: TextStyle(color: Colors.red, fontSize: fontSizeSmall),
+                      ),
+                    ],
+                    Expanded(child: Container()),
+                  ],
                 ),
               ),
-              SizedBox(height: rHeight(context, 8)),
-              Text(
-                '링크가 만료됐거나 잘못 열렸을 수 있습니다. 아래 버튼을 눌러 비밀번호 재설정 이메일을 다시 요청하세요.',
-                style: TextStyle(fontSize: rFont(context, 14)),
-              ),
-              SizedBox(height: rHeight(context, 8)),
-              TextButton(
-                onPressed: _goRequestAgain,
-                child: Text(
-                  '비밀번호 재설정 이메일 다시 요청',
-                  style: TextStyle(fontSize: rFont(context, 14)),
-                ),
-              ),
-              Divider(height: rHeight(context, 32)),
-            ],
-            SizedBox(height: spacingSmall / 2),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: '새 비밀번호',
-                hintText: '영문 + 숫자 + 특수문자 포함, 8자 이상',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(inputRadius),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: rWidth(context, 14),
-                  vertical: rHeight(context, 14),
-                ),
-              ),
-              obscureText: true,
-              style: TextStyle(fontSize: rFont(context, 14)),
             ),
-            SizedBox(height: spacingMedium),
-            SizedBox(
-              width: double.infinity,
-              height: buttonHeight,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(rWidth(context, 8)),
-                  ),
-                ),
-                child: _loading
-                    ? SizedBox(
-                  width: rWidth(context, 18),
-                  height: rWidth(context, 18),
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-                    : Text(
-                  '변경하기',
-                  style: TextStyle(fontSize: rFont(context, 16)),
-                ),
-              ),
-            ),
-            if (_status != null) ...[
-              SizedBox(height: rHeight(context, 12)),
-              Text(
-                _status!,
-                style: TextStyle(color: Colors.red, fontSize: rFont(context, 13)),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

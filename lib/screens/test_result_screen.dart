@@ -110,7 +110,6 @@ class _TestResultScreenState extends State<TestResultScreen> {
               ),
               SizedBox(height: padding.vertical),
 
-              // 이미지 + 그림자 박스
               Container(
                 decoration: BoxDecoration(
                   boxShadow: [

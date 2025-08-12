@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import 'signinsuccess_screen.dart';
+import '../utils/email_verification_provider.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({Key? key}) : super(key: key);
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -30,6 +32,28 @@ class _SignInScreenState extends State<SignInScreen> {
       RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
   bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final provider = Provider.of<EmailVerificationProvider>(context);
+    final token = provider.token;
+
+    if (token != null && !_isEmailVerified) {
+      setState(() {
+        _isEmailVerified = true;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이메일 인증이 완료되었습니다!')),
+        );
+      });
+
+      provider.clearToken();
+    }
+  }
+
   // 이메일 인증 요청
   Future<void> _verifyEmail() async {
     final email = _emailController.text.trim();
@@ -47,29 +71,26 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     try {
-      final response = await ApiClient.dio
-          .post('/request-email-verification', data: {'email': email});
+      final response = await ApiClient.dio.post('/request-email-verification',
+          data: {'email': email});
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('인증 메일이 발송되었습니다. 이메일을 확인하세요')),
         );
-        setState(() {
-          _isEmailVerified = true;
-        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('인증 요청 실패: ${response.statusMessage}')),
+          SnackBar(content: Text('인증 요청에 실패했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('인증 요청 중 오류 발생: $e')),
+        SnackBar(content: Text('인증 요청에 실패했습니다. 다시 시도해주세요.')),
       );
     }
   }
 
-  // 회원가입
+  // 인증 완료 후, 회원가입
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -91,9 +112,7 @@ class _SignInScreenState extends State<SignInScreen> {
         },
       );
 
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
+      if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입 성공!')),
         );
@@ -112,12 +131,12 @@ class _SignInScreenState extends State<SignInScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('에러: ${e.message}')),
+          SnackBar(content: Text('에러가 발생했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('요청 실패: $e')),
+        SnackBar(content: Text('요청에 실패했습니다. 다시 시도해주세요.')),
       );
     }
   }
@@ -143,7 +162,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // 이메일 + 인증 버튼
                       isWide
                           ? IntrinsicHeight(
                         child: Row(
@@ -247,8 +265,7 @@ class _SignInScreenState extends State<SignInScreen> {
         labelText: '비밀번호',
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          icon: Icon(
-              _obscurePassword ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
           onPressed: () {
             setState(() {
               _obscurePassword = !_obscurePassword;
@@ -275,9 +292,7 @@ class _SignInScreenState extends State<SignInScreen> {
         labelText: '비밀번호 확인',
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          icon: Icon(_obscureConfirmPassword
-              ? Icons.visibility_off
-              : Icons.visibility),
+          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility),
           onPressed: () {
             setState(() {
               _obscureConfirmPassword = !_obscureConfirmPassword;

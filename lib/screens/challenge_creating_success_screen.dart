@@ -54,8 +54,8 @@ class ChallengeCreatingSuccessScreen extends StatelessWidget {
                 height: buttonHeight,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // 성공 화면 닫고
-                    Navigator.pop(context); // 챌린지 생성 화면 닫음
+                    Navigator.pop(context);
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,

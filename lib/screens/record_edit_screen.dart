@@ -125,7 +125,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('수정 중 오류 발생: $e')),
+        SnackBar(content: Text('수정 중 오류가 발생했습니다. 다시 시도해주세요.')),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -163,12 +163,12 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제 실패: ${response.statusCode}')),
+          SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 중 오류 발생: $e')),
+        SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
       );
     } finally {
       setState(() => _isDeleting = false);

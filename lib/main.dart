@@ -5,16 +5,17 @@ import 'package:app_links/app_links.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
 
 import 'utils/user_manager.dart';
 import 'utils/authutils.dart';
 import 'screens/login_screen.dart';
 import 'screens/pwreset_screen.dart';
-import 'screens/deeplinkfaliedpasswordscreen.dart';
 import 'screens/home_screen.dart';
 import 'screens/deeplinkpasswordscreen.dart';
 import 'api/api_client.dart';
 import 'screens/onboarding.dart';
+import 'utils/email_verification_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -25,19 +26,24 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  // 네트워크 연결 체크
   var connectivityResult = await Connectivity().checkConnectivity();
   if (connectivityResult == ConnectivityResult.none) {
     runApp(const OfflineApp());
     return;
   }
 
-  // 사용자/토큰 로컬 초기화
   await UserManager().init();
   ApiClient.initInterceptor(navigatorKey);
   await ApiClient.ensureValidAccessToken();
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => EmailVerificationProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class OfflineApp extends StatelessWidget {
@@ -75,13 +81,14 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool? isLoggedIn;
-  bool? _hasSeenOnboarding; // onboarding seen check
+  bool? _hasSeenOnboarding;
 
   final AppLinks _appLinks = AppLinks();
   StreamSubscription? _sub;
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
   Uri? _initialUri;
+  String? _deepLinkToken;
   bool _isOfflineDialogShown = false;
 
   @override
@@ -96,6 +103,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkOnboardingSeen() async {
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool('seenOnboarding') ?? false;
+    if (!mounted) return;
     setState(() {
       _hasSeenOnboarding = seen;
     });
@@ -118,26 +126,37 @@ class _MyAppState extends State<MyApp> {
     try {
       final uri = await _appLinks.getInitialLink();
       if (uri != null) {
-        setState(() {
-          _initialUri = uri;
-        });
+        _processDeepLink(uri);
       }
     } catch (_) {}
 
-    _sub = _appLinks.uriLinkStream.listen((Uri? uri) {
-      if (uri != null) {
-        _handleUri(uri);
-      }
-    }, onError: (_) {});
+    _sub = _appLinks.uriLinkStream.listen(
+          (Uri? uri) {
+        if (uri != null) {
+          _processDeepLink(uri);
+        }
+      },
+      onError: (_) {},
+    );
   }
 
-  void _handleUri(Uri uri) {
+  void _processDeepLink(Uri uri) {
+    if (!mounted) return;
+
+    setState(() {
+      _initialUri = uri;
+    });
+
     if (uri.path == '/reset-password') {
       final token = uri.queryParameters['token'];
       if (token != null && token.isNotEmpty) {
-        navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => DeepLinkResetPasswordScreen(initialToken: token),
-        ));
+        _deepLinkToken = token;
+      }
+    } else if (uri.path == '/verify-email') {
+      final token = uri.queryParameters['token'];
+      if (token != null && token.isNotEmpty) {
+        final provider = Provider.of<EmailVerificationProvider>(navigatorKey.currentContext!, listen: false);
+        provider.setToken(token);
       }
     }
   }
@@ -161,7 +180,7 @@ class _MyAppState extends State<MyApp> {
         _showOfflineDialog();
       } else if (!isOffline && _isOfflineDialogShown) {
         _isOfflineDialogShown = false;
-        // 온라인 복귀 시 다이얼로그 닫기
+
         if (navigatorKey.currentState?.canPop() ?? false) {
           navigatorKey.currentState?.pop();
         }
@@ -209,61 +228,39 @@ class _MyAppState extends State<MyApp> {
       );
     }
 
-    // 딥링크 비밀번호 재설정
-    if (_initialUri?.path == '/reset-password') {
-      final token = _initialUri!.queryParameters['token'];
-      return MaterialApp(
-        navigatorKey: navigatorKey,
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/home': (context) => const HomeScreen(),
-          '/pw-reset': (context) => const PwResetScreen(),
-          '/deeplink-failed-password': (context) => DeepLinkPasswordScreen(),
-        },
-        title: 'PaEmotion',
-        debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.system,
-        theme: _lightTheme(),
-        darkTheme: _darkTheme(),
-        home: DeepLinkResetPasswordScreen(initialToken: token),
-      );
-    }
+    String initialRoute = '/home';
 
-    // 온보딩 안 봤으면 온보딩 화면 먼저
-    if (_hasSeenOnboarding == false) {
-      return MaterialApp(
-        navigatorKey: navigatorKey,
-        routes: {
-          '/onboarding': (context) => const OnboardingScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/home': (context) => const HomeScreen(),
-        },
-        title: 'PaEmotion',
-        debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.system,
-        theme: _lightTheme(),
-        darkTheme: _darkTheme(),
-        home: const OnboardingScreen(),
-      );
+    if (_deepLinkToken != null) {
+      initialRoute = '/reset-password';
+    } else if (_hasSeenOnboarding == false) {
+      initialRoute = '/onboarding';
     }
 
     return MaterialApp(
       navigatorKey: navigatorKey,
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/pw-reset': (context) => const PwResetScreen(),
-        '/deeplink-failed-password': (context) => DeepLinkPasswordScreen(),
-      },
       title: 'PaEmotion',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: _lightTheme(),
       darkTheme: _darkTheme(),
-      home: TokenCheckerWidget(
-        onLogout: _handleLogout,
-        child: isLoggedIn! ? const HomeScreen() : const LoginScreen(),
-      ),
+      initialRoute: initialRoute,
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/pw-reset': (context) => const PwResetScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+        '/reset-password': (context) => DeepLinkResetPasswordScreen(initialToken: _deepLinkToken),
+      },
+      builder: (context, child) {
+        if (_deepLinkToken != null) {
+          return child!;
+        }
+        if (isLoggedIn == true) {
+          return TokenCheckerWidget(onLogout: _handleLogout, child: child ?? const HomeScreen());
+        } else {
+          return child ?? const LoginScreen();
+        }
+      },
     );
   }
 

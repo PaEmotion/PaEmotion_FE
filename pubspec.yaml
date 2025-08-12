@@ -1,5 +1,5 @@
 name: paemotion
-description: "A new Flutter project."
+description: "Flutter app to manage and analyze emotional spending habits."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -35,13 +35,13 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   google_sign_in: ^6.2.1
 
-  # https
+
   dio: ^5.4.0
   json_annotation: ^4.8.1
-  flutter_secure_storage: ^9.0.0  # 보안
+  flutter_secure_storage: ^9.0.0
   shared_preferences: ^2.2.2
 
-  #chart
+
   fl_chart: ^0.66.0
   intl: ^0.18.0
   percent_indicator: ^4.2.2
@@ -57,6 +57,7 @@ dependencies:
   app_links: ^6.4.0
   connectivity_plus: ^4.0.0
   introduction_screen: ^3.1.17
+  provider: ^6.0.5
 
 
 dev_dependencies:

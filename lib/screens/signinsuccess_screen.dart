@@ -48,7 +48,7 @@ class SignInSuccessScreen extends StatelessWidget {
                   padding: buttonPadding,
                 ),
                 onPressed: () {
-                  Navigator.pop(context); // 로그인 화면으로 돌아가기
+                  Navigator.pop(context);
                 },
                 child: Text(
                   '로그인 하러 가기',
