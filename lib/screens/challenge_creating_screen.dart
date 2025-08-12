@@ -57,16 +57,6 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
       goalCount: goalCount,
     );
 
-    if (response != null) {
-      print('=== 챌린지 생성 응답 전체 ===');
-      print('statusCode: ${response.statusCode}');
-      print('headers: ${response.headers}');
-      print('data: ${response.data}');
-      print('requestOptions: ${response.requestOptions}');
-    } else {
-      print('response가 null입니다.');
-    }
-
     if (response == null || (response.statusCode != 201)) {
       String errorMsg = '챌린지 생성에 실패했습니다. 다시 시도해주세요.';
       if (response != null && response.data != null) {
@@ -91,19 +81,16 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
     );
   }
 
-  // 반응형 너비
   double rWidth(double base) {
     final w = MediaQuery.of(context).size.width;
     return base * (w / 390);
   }
 
-  // 반응형 높이
   double rHeight(double base) {
     final h = MediaQuery.of(context).size.height;
     return base * (h / 844);
   }
 
-  // 반응형 폰트 크기
   double rFont(double base) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final w = MediaQuery.of(context).size.width;

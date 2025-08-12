@@ -55,7 +55,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
         });
       }
     } catch (e) {
-      debugPrint('[loadCurrentUser] $e');
     }
   }
 
@@ -104,8 +103,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
         _myChallengeDetail = detail;
         _isLoadingMyChallenge = false;
       });
-    } catch (e, stack) {
-      debugPrint('[loadMyChallenge] 예외 발생: $e\n$stack');
+    } catch (e) {
       setState(() {
         _myChallengeDetail = null;
         _isLoadingMyChallenge = false;
@@ -436,9 +434,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
           Center(
             child: Text(
               isTeamComplete && isPositive
-                  ? // 100% & 긍정 챌린지인 경우, 진행중 문구 없이 특별 메시지
+                  ?
               '모든 밥을 주는 데 성공했어요!\n기니피그가 행복해졌어요.'
-                  : // 그 외는 기존 흐름: 진행률 + 상황 메시지
+                  :
               '현재 ${detail.teamProgressRate.toStringAsFixed(1)}% 만큼 진행중이에요.\n'
                   '${isPositive
                   ? "기니피그가 밥을 기다리고 있어요!"
@@ -730,15 +728,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
     });
   }
 
-  void _goToSearchChallenge() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ChallengeSearchScreen()),
-    ).then((value) {
-      _loadMyChallenge();
-      _loadAllChallenges();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
