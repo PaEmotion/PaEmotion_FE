@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -93,7 +92,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         }
       });
     } catch (e) {
-      print('한 달치 기록 불러오기 실패: $e');
       setState(() {
         _allRecords = [];
         _availableDates = [];
@@ -241,19 +239,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     }
   }
 
-  void _changeDateBySwipe(bool forward) {
-    final currentStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final index = _availableDates.indexOf(currentStr);
-    if (index == -1) return;
-    final newIndex = forward ? index + 1 : index - 1;
-    if (newIndex >= 0 && newIndex < _availableDates.length) {
-      final newDate = DateTime.parse(_availableDates[newIndex]);
-      setState(() {
-        _selectedDate = newDate;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final records = _recordsForDate(_selectedDate);
@@ -298,7 +283,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           pieHeight = 200;
         }
 
-        return SingleChildScrollView( // 오버플로 방지
+        return SingleChildScrollView(
           child: Column(
             children: [
               GestureDetector(

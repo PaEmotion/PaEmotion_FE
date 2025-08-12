@@ -27,16 +27,13 @@ class _ReportScreenState extends State<ReportScreen>  {
     if (userProfile == null) return;
 
     final userId = userProfile['userId'] as int?;
-    if (userId == null) {
-      debugPrint('❌ userId가 null입니다. 사용자 정보를 확인하세요: $userProfile');
-      return;
-    }
+    if (userId == null) return;
 
-    final startDate = DateTime(2025, 4, 1);
-    final endDate = DateTime(2025, 7, 31);
+    final releaseDate = DateTime(2025, 9, 1);
+    final today = DateTime.now();
 
-    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
-    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+    final startDateStr = DateFormat('yyyy-MM-dd').format(releaseDate);
+    final endDateStr = DateFormat('yyyy-MM-dd').format(today);
 
     final reports = await ReportUtils.fetchReportsFromApi(
       userId: userId,
@@ -44,16 +41,9 @@ class _ReportScreenState extends State<ReportScreen>  {
       endDate: endDateStr,
     );
 
-    print('📡 API 호출 시작: userId=$userId, startDate=$startDateStr, endDate=$endDateStr');
-
     await ReportUtils.saveReportsSmartly(reports);
-
-    print('✅ 전체 기간 리포트 받아와서 캐시에 저장 완료');
-    print('받아온 리포트 개수: ${reports.length}');
-    for (var r in reports) {
-      print('리포트 - 타입: ${r.reportType}, 날짜: ${r.reportDate}, 제목: ${r.reportText ?? "내용없음"}');
-    }
   }
+
 
 
   @override
