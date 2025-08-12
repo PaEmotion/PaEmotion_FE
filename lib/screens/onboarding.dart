@@ -7,19 +7,19 @@ class OnboardingScreen extends StatelessWidget {
 
   void _onIntroEnd(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isFirstLaunch', false);
+    await prefs.setBool('seenOnboarding', true);
     Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final topPadding = screenHeight * 0.05; // 화면 높이에 비례한 패딩
+    final topPadding = screenHeight * 0.05;
 
     final pageDecoration = PageDecoration(
       titleTextStyle: const TextStyle(fontSize: 26.0, fontWeight: FontWeight.bold),
       bodyTextStyle: const TextStyle(fontSize: 17.0),
-      imageFlex: 3, // 이미지가 차지하는 비율
+      imageFlex: 3,
       bodyFlex: 1,
       bodyAlignment: Alignment.bottomCenter,
       imageAlignment: Alignment.center,
@@ -31,7 +31,7 @@ class OnboardingScreen extends StatelessWidget {
         child: Image.asset(
           assetName,
           width: double.infinity,
-          fit: BoxFit.contain, // 이미지 비율 유지
+          fit: BoxFit.contain,
         ),
       );
     }
