@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
-import '../utils/user_storage.dart';
+import '../utils/user_manager.dart';
 import 'mp_edit_screen.dart';
 import 'mp_pwreset_screen.dart';
 import 'test_main_screen.dart';
@@ -77,7 +77,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _logout() async {
-    await UserStorage.clearProfile();
+    await UserManager().logout();
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -117,7 +117,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 닉네임 영역
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
