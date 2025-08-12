@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/user.dart';
 
 class UserStorage {
-  static const _profileKey = 'user_profile'; // 토큰 제외한 프로필 (상대적 민감성 낮은 부분)
+  static const _profileKey = 'user_profile';
 
   static Future<void> saveProfile(User user) async {
     final prefs = await SharedPreferences.getInstance();

@@ -17,7 +17,8 @@ Future<List<Record>> fetchRecordsInRange(DateTime start, DateTime end) async {
       return <Record>[];
     }
   } catch (e) {
-    print('기록 불러오기 실패 ($start ~ $end): $e');
     return <Record>[];
   }
 }
+
+

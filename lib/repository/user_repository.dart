@@ -8,7 +8,7 @@ class UserRepository {
   UserRepository({required this.secureStorage});
 
   Future<void> persistUser(User user) async {
-    // 프로필과 토큰을 분리 저장
+    // 프로필 정보와 access, refresh 토큰을 분리 저장
     await UserStorage.saveProfile(user);
     await secureStorage.saveTokens(
       accessToken: user.accessToken,

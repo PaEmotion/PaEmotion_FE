@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 import 'recordsuccess_screen.dart';
-import '../models/user.dart';
 import '../api/api_client.dart';
 import '../utils/user_storage.dart';
 
@@ -35,7 +32,7 @@ class _RecordScreenState extends State<RecordScreen> {
     final userMap = await UserStorage.loadProfileJson();
     if (userMap == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다.')),
+        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인 해주세요.')),
       );
       return;
     }
@@ -69,9 +66,6 @@ class _RecordScreenState extends State<RecordScreen> {
     };
 
     try {
-      //디버그용
-      print('보내는 데이터: $recordData');
-
       final response = await ApiClient.dio.post(
           '/records/create', data: recordData);
 
@@ -82,11 +76,13 @@ class _RecordScreenState extends State<RecordScreen> {
           MaterialPageRoute(builder: (_) => const RecordSuccessScreen()),
         );
       } else {
-        throw Exception('서버 오류: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류가 발생했습니다. 다시 시도해주세요.')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('기록 저장 실패: $e')),
+        SnackBar(content: Text('기록 저장이 실패했습니다. 다시 시도해주세요.')),
       );
     }
   }
