@@ -18,8 +18,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   int? _totalSpending;
   late String _currentMonth;
   double? _predictedSpending;
-  Map<int, int> _categoryBudgets = {}; // spendCategoryId -> amount
-  Map<int, int> _categorySpendings = {}; // spendCategoryId -> actual spending
+  Map<int, int> _categoryBudgets = {};
+  Map<int, int> _categorySpendings = {};
   Map<int, String> _categoryNames = {
     1: '쇼핑',
     2: '배달음식',
@@ -44,12 +44,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   Future<void> _loadData() async {
     final startOfMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    final endOfMonth = DateTime.now().add(const Duration(days: 1)); // 내일까지 포함
+    final endOfMonth = DateTime.now().add(const Duration(days: 1));
 
     final budgetMonthStr = DateFormat('yyyy-MM-dd').format(startOfMonth);
 
     try {
-      // 1. 예산 데이터 조회
+      // 예산 데이터 조회
       final budgetRes = await ApiClient.dio.get(
         '/budgets/me',
         queryParameters: {'budgetMonth': budgetMonthStr},
@@ -76,10 +76,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
           (item['spendCategoryId'] as int): (item['amount'] as int),
       };
 
-      // 2. 현재 달 소비 기록 불러오기
+      // 현재 달 소비 기록 불러오기
       List<Record> records = await fetchRecordsInRange(startOfMonth, endOfMonth);
 
-      // 3. 카테고리별 소비 합산
+      // 카테고리별 소비 합산
       Map<int, int> categorySpendings = {};
       int totalSpending = 0;
 
@@ -91,14 +91,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
       }
 
       final response = await ApiClient.dio.get('/ml/predict');
-      final predList = response.data['예측'];
-      double? prediction;
-
-      if (predList is List && predList.isNotEmpty) {
-        prediction = predList[0].toDouble();
-      } else {
-        prediction = null;
-      }
+      final data = response.data['data'];
+      final String predictionStr = data['예측'];
+      final numericString = predictionStr.replaceAll(RegExp(r'[^0-9]'), '');
+      final double? prediction = double.tryParse(numericString);
 
       if (mounted) {
         setState(() {
@@ -110,7 +106,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
         });
       }
     } catch (e) {
-      debugPrint("데이터 로드 실패: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('오류가 발생했습니다.')),
+      );
     }
   }
 
@@ -129,7 +127,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
         return <Record>[];
       }
     } catch (e) {
-      print('기록 불러오기 실패 ($start ~ $end): $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('오류가 발생했습니다.')),
+      );
       return <Record>[];
     }
   }
