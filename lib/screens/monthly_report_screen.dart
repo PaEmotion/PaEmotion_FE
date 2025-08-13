@@ -1,11 +1,6 @@
-// ✅ 아래는 주간 리포트처럼, 제목/날짜/내용을 모두 영수증 이미지 안에 넣고
-// 차트는 그 아래에 분리하여 배치한 수정된 월간 리포트 전체 코드입니다.
-
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/record.dart';
 import '../utils/record_utils.dart';
 import '../utils/report_utils.dart';
@@ -178,11 +173,20 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final padding = size.width * 0.04;
+    final chartHeight = size.height * 0.25;
+    final cardMinHeight = size.height * 0.3;
+    final cardPadding = size.width * 0.06;
+    final titleFontSize = size.width * 0.05;
+    final subTitleFontSize = size.width * 0.035;
+    final reportFontSize = size.width * 0.035;
+
     if (_loading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_validMonths.isEmpty) {
-      return Scaffold(appBar: _appBar, body: Center(child: Text('소비 기록이 없습니다.')));
+      return Scaffold(appBar: _appBar, body: Center(child: Text('조회 가능한 리포트가 없습니다.')));
     }
 
     return Scaffold(
@@ -191,7 +195,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       body: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(padding),
             child: DropdownButton<String>(
               isExpanded: true,
               value: _validMonths[_currentPageIndex],
@@ -221,78 +225,44 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                 final emotionData = _getEmotionCounts(_currentMonthRecords);
 
                 return SingleChildScrollView(
-                  padding: EdgeInsets.all(24),
+                  padding: EdgeInsets.all(padding),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Stack(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            constraints: BoxConstraints(minHeight: 500),
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('lib/assets/report_receipt.png'),
-                                fit: BoxFit.fill,
-                              ),
-                            ),
-                            padding: EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ReportUtils.formatMonthlyReportTitle(monthKey),
-                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                ),
-                                SizedBox(height: 6),
-                                Text(
-                                  '${DateFormat('yyyy.MM.01').format(monthStart)} ~ ${DateFormat('yyyy.MM.dd').format(DateTime(monthStart.year, monthStart.month + 1, 0))}',
-                                  style: TextStyle(fontSize: 13, color: Colors.black54),
-                                ),
-                                SizedBox(height: 20),
-                                Text(
-                                  _selectedReportText ?? '',
-                                  style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
-                                ),
-                              ],
-                            ),
+                      Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(minHeight: cardMinHeight),
+                        decoration: BoxDecoration(
+                          image: const DecorationImage(
+                            image: AssetImage('lib/assets/report_receipt.png'),
+                            fit: BoxFit.fill,
                           ),
-                        ],
+                        ),
+                        padding: EdgeInsets.all(cardPadding),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ReportUtils.formatMonthlyReportTitle(monthKey),
+                              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: cardMinHeight * 0.02),
+                            Text(
+                              '${DateFormat('yyyy.MM.01').format(monthStart)} ~ ${DateFormat('yyyy.MM.dd').format(DateTime(monthStart.year, monthStart.month + 1, 0))}',
+                              style: TextStyle(fontSize: subTitleFontSize, color: Colors.black54),
+                            ),
+                            SizedBox(height: cardMinHeight * 0.06),
+                            Text(
+                              _selectedReportText ?? '',
+                              style: TextStyle(fontSize: reportFontSize, color: Colors.black87, height: 1.4),
+                            ),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 32),
-                      if (categoryData.isNotEmpty) ...[
-                        const Text('카테고리별 소비', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 200,
-                          child: PieChart(
-                            PieChartData(
-                              sections: _buildPieSections(categoryData, categoryColors),
-                              centerSpaceRadius: 60,
-                              sectionsSpace: 2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildDetailList('카테고리별 소비 내역', categoryData, categoryColors),
-                      ],
-                      const SizedBox(height: 32),
-                      if (emotionData.isNotEmpty) ...[
-                        const Text('감정별 소비', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 200,
-                          child: PieChart(
-                            PieChartData(
-                              sections: _buildPieSections(emotionData, emotionColors),
-                              centerSpaceRadius: 60,
-                              sectionsSpace: 2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildDetailList('감정별 소비 내역', emotionData, emotionColors),
-                      ],
+                      SizedBox(height: padding * 2),
+                      if (emotionData.isNotEmpty) _buildChartBlock('감정별 소비 내역', emotionData, emotionColors, chartHeight),
+                      SizedBox(height: padding * 2),
+                      if (categoryData.isNotEmpty) _buildChartBlock('카테고리별 소비 내역', categoryData, categoryColors, chartHeight),
                     ],
                   ),
                 );
@@ -304,10 +274,32 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     );
   }
 
+  Widget _buildChartBlock(String title, Map<String, int> data, Map<String, Color> colors, double height) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        SizedBox(height: 12),
+        SizedBox(
+          height: height,
+          child: PieChart(
+            PieChartData(
+              sections: _buildPieSections(data, colors),
+              centerSpaceRadius: height * 0.3,
+              sectionsSpace: 2,
+            ),
+          ),
+        ),
+        SizedBox(height: 12),
+        _buildDetailList('', data, colors),
+      ],
+    );
+  }
+
   AppBar get _appBar => AppBar(
-    title: Text('월간 리포트', style: TextStyle(color: Colors.black)),
+    title: const Text('월간 리포트', style: TextStyle(color: Colors.black)),
     backgroundColor: Colors.white,
-    iconTheme: IconThemeData(color: Colors.black),
+    iconTheme: const IconThemeData(color: Colors.black),
     centerTitle: true,
     elevation: 0,
   );
@@ -319,7 +311,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         LayoutBuilder(builder: (context, constraints) {
           final itemWidth = (constraints.maxWidth - 16) / 2;
@@ -331,7 +323,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               final percent = totalSum > 0 ? (e.value / totalSum) * 100 : 0;
               return Container(
                 width: itemWidth,
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
                 ),
@@ -342,17 +334,21 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                       child: Row(
                         children: [
                           Container(width: 10, height: 10, color: color),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Expanded(
-                            child: Text(e.key,
-                              style: TextStyle(fontSize: 12),
+                            child: Text(
+                              e.key,
+                              style: const TextStyle(fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Text('${percent.toStringAsFixed(1)}%', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    Text(
+                      '${percent.toStringAsFixed(1)}%',
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
                   ],
                 ),
               );

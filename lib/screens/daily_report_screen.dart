@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -93,7 +92,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         }
       });
     } catch (e) {
-      print('한 달치 기록 불러오기 실패: $e');
       setState(() {
         _allRecords = [];
         _availableDates = [];
@@ -146,7 +144,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     }).toList();
   }
 
-  Widget _buildSpendList(List<Record> records) {
+  Widget _buildSpendList(List<Record> records, double smallFontSize) {
     if (records.isEmpty) {
       return const Text('소비 항목 없음');
     }
@@ -154,88 +152,80 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '소비 항목',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: smallFontSize + 2, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: smallFontSize * 0.5),
         ...records.map((record) {
           final emotionIndex = (record.emotion_category - 1).clamp(0, allEmotions.length - 1);
           final emotionName = allEmotions[emotionIndex];
           final emotionColor = emotionColors[emotionName] ?? Colors.grey;
 
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: EdgeInsets.symmetric(vertical: smallFontSize * 0.1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.only(right: 6),
+                      width: smallFontSize * 0.7,
+                      height: smallFontSize * 0.7,
+                      margin: EdgeInsets.only(right: smallFontSize * 0.3),
                       decoration: BoxDecoration(
                         color: emotionColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    Text(record.spendItem, style: const TextStyle(fontSize: 14)),
+                    Text(record.spendItem, style: TextStyle(fontSize: smallFontSize)),
                   ],
                 ),
                 Text('${numberFormat.format(record.spendCost)}원',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    style: TextStyle(fontSize: smallFontSize, color: Colors.grey)),
               ],
             ),
           );
         }).toList(),
-        const SizedBox(height: 16),
+        const Divider(),
+        SizedBox(height: smallFontSize),
       ],
     );
   }
 
-  Widget _buildAllList(String title, Map<String, int> dataMap, Map<String, Color> colorMap) {
+  Widget _buildAllList(String title, Map<String, int> dataMap, Map<String, Color> colorMap, double smallFontSize) {
     final entries = dataMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final totalSum = dataMap.values.fold<double>(0.0, (a, b) => a + b.toDouble());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        LayoutBuilder(builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 16) / 2;
-          return Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: entries.map((entry) {
-              final color = colorMap[entry.key] ?? Colors.grey;
-              final percent = totalSum > 0 ? (entry.value / totalSum) * 100 : 0;
-              return Container(
-                width: itemWidth,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
+        Text(title, style: TextStyle(fontSize: smallFontSize, fontWeight: FontWeight.bold)),
+        SizedBox(height: smallFontSize * 0.5),
+        ...entries.map((entry) {
+          final color = colorMap[entry.key] ?? Colors.grey;
+          final percent = totalSum > 0 ? (entry.value / totalSum) * 100 : 0;
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: smallFontSize * 0.2),
+            child: Row(
+              children: [
+                Container(
+                  width: smallFontSize * 0.7,
+                  height: smallFontSize * 0.7,
+                  color: color,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Row(
-                        children: [
-                          Container(width: 10, height: 10, color: color),
-                          const SizedBox(width: 6),
-                          Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                        ],
-                      ),
-                    ),
-                    Text('${percent.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                  ],
+                SizedBox(width: smallFontSize * 0.3),
+                Expanded(
+                  child: Text(entry.key,
+                      style: TextStyle(fontSize: smallFontSize * 0.9),
+                      overflow: TextOverflow.ellipsis),
                 ),
-              );
-            }).toList(),
+                Text('${percent.toStringAsFixed(1)}%',
+                    style: TextStyle(fontSize: smallFontSize * 0.9, color: Colors.black54)),
+              ],
+            ),
           );
-        }),
+        }).toList(),
       ],
     );
   }
@@ -245,19 +235,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     if (_availableDateSet.contains(formatted)) {
       setState(() {
         _selectedDate = selected;
-      });
-    }
-  }
-
-  void _changeDateBySwipe(bool forward) {
-    final currentStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final index = _availableDates.indexOf(currentStr);
-    if (index == -1) return;
-    final newIndex = forward ? index + 1 : index - 1;
-    if (newIndex >= 0 && newIndex < _availableDates.length) {
-      final newDate = DateTime.parse(_availableDates[newIndex]);
-      setState(() {
-        _selectedDate = newDate;
       });
     }
   }
@@ -277,118 +254,141 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         iconTheme: const IconThemeData(color: Colors.black87),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _isCalendarVisible = !_isCalendarVisible),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    DateFormat('yyyy년 M월 d일').format(_selectedDate),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(_isCalendarVisible ? Icons.expand_less : Icons.expand_more, size: 20),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 250),
-            crossFadeState: _isCalendarVisible
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            firstChild: const SizedBox.shrink(),
-            secondChild: TableCalendar(
-              focusedDay: _selectedDate,
-              firstDay: DateTime.utc(2025, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              calendarFormat: CalendarFormat.month,
-              selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
-              onDaySelected: (selected, focused) {
-                _onDateSelected(selected);
-              },
-              enabledDayPredicate: (day) =>
-                  _availableDateSet.contains(DateFormat('yyyy-MM-dd').format(day)),
-              headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
-              calendarStyle: CalendarStyle(
-                selectedDecoration: BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
-                selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              onPageChanged: (focusedDay) {
-                _loadAvailableDatesForMonth(focusedDay);
-              },
-            ),
-          ),
-          Expanded(
-            child: _availableDates.isEmpty
-                ? const Center(child: Text('소비기록이 없습니다.'))
-                : GestureDetector(
-              onHorizontalDragEnd: (details) {
-                if (details.primaryVelocity == null) return;
-                if (details.primaryVelocity! < 0) {
-                  _changeDateBySwipe(true);
-                } else if (details.primaryVelocity! > 0) {
-                  _changeDateBySwipe(false);
-                }
-              },
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: LayoutBuilder(builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        double titleFontSize;
+        double smallFontSize;
+        double sectionSpacing;
+        double contentPadding;
+        double pieHeight;
+
+        if (width < 350) {
+          titleFontSize = 18;
+          smallFontSize = 12;
+          sectionSpacing = 16;
+          contentPadding = 16;
+          pieHeight = 150;
+        } else if (width < 600) {
+          titleFontSize = 22;
+          smallFontSize = 14;
+          sectionSpacing = 20;
+          contentPadding = 20;
+          pieHeight = 180;
+        } else {
+          titleFontSize = 26;
+          smallFontSize = 16;
+          sectionSpacing = 24;
+          contentPadding = 24;
+          pieHeight = 200;
+        }
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: () => setState(() => _isCalendarVisible = !_isCalendarVisible),
+                child: Padding(
+                  padding: EdgeInsets.all(contentPadding * 0.5),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '${DateFormat('yyyy년 M월 d일').format(_selectedDate)} 소비 리포트',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                        DateFormat('yyyy년 M월 d일').format(_selectedDate),
+                        style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 24),
-                      _buildSpendList(records),
-                      SizedBox(
-                        height: 200,
-                        child: categoryPie.isEmpty
-                            ? const Center(child: Text('데이터 없음'))
-                            : PieChart(
-                          PieChartData(
-                            sections: categoryPie,
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 60,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAllList('카테고리별 소비 내역', categoryData, categoryColors),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        height: 200,
-                        child: emotionPie.isEmpty
-                            ? const Center(child: Text('데이터 없음'))
-                            : PieChart(
-                          PieChartData(
-                            sections: emotionPie,
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 60,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAllList('감정별 소비 내역', emotionData, emotionColors),
+                      SizedBox(width: contentPadding * 0.3),
+                      Icon(_isCalendarVisible ? Icons.expand_less : Icons.expand_more,
+                          size: titleFontSize * 0.6),
                     ],
                   ),
                 ),
               ),
-            ),
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 250),
+                crossFadeState: _isCalendarVisible
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: const SizedBox.shrink(),
+                secondChild: TableCalendar(
+                  focusedDay: _selectedDate,
+                  firstDay: DateTime.utc(2025, 1, 1),
+                  lastDay: DateTime.utc(2030, 12, 31),
+                  calendarFormat: CalendarFormat.month,
+                  selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
+                  onDaySelected: (selected, focused) {
+                    _onDateSelected(selected);
+                  },
+                  enabledDayPredicate: (day) =>
+                      _availableDateSet.contains(DateFormat('yyyy-MM-dd').format(day)),
+                  headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                  calendarStyle: CalendarStyle(
+                    selectedDecoration:
+                    BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                    selectedTextStyle:
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  onPageChanged: (focusedDay) {
+                    _loadAvailableDatesForMonth(focusedDay);
+                  },
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(contentPadding),
+                child: _availableDates.isEmpty
+                    ? const Center(child: Text('소비기록이 없습니다.'))
+                    : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${DateFormat('yyyy년 M월 d일').format(_selectedDate)} 소비 리포트',
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: sectionSpacing),
+                    _buildSpendList(records, smallFontSize),
+                    SizedBox(
+                      height: pieHeight,
+                      child: emotionPie.isEmpty
+                          ? const Center(child: Text('데이터 없음'))
+                          : PieChart(
+                        PieChartData(
+                          sections: emotionPie,
+                          sectionsSpace: 2,
+                          centerSpaceRadius: pieHeight * 0.3,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: smallFontSize),
+                    _buildAllList(
+                        '감정별 소비 내역', emotionData, emotionColors, smallFontSize),
+                    SizedBox(height: smallFontSize),
+                    SizedBox(
+                      height: pieHeight,
+                      child: categoryPie.isEmpty
+                          ? const Center(child: Text('데이터 없음'))
+                          : PieChart(
+                        PieChartData(
+                          sections: categoryPie,
+                          sectionsSpace: 2,
+                          centerSpaceRadius: pieHeight * 0.3,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: smallFontSize),
+                    _buildAllList(
+                        '카테고리별 소비 내역', categoryData, categoryColors, smallFontSize),
+                    SizedBox(height: sectionSpacing),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      }),
     );
   }
 }
