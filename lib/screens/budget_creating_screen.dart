@@ -12,12 +12,12 @@ class BudgetCreatingScreen extends StatefulWidget {
 }
 
 class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
+  String? errorMessage;
   final String currentMonth =
       "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}";
 
   final List<String> allCategories = [
-    '쇼핑', '배달음식', '외식', '카페', '취미',
-    '뷰티', '건강', '자기계발', '선물', '여행', '모임'
+    '쇼핑', '배달음식', '외식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
   ];
 
   List<Map<String, Object>> budgetItems = [];
@@ -68,8 +68,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
             for (final item in data['categorySpent']) {
               final int spendCategoryId = item['spendCategoryId'];
               final int spent = item['spent'];
-              if (spendCategoryId > 0 &&
-                  spendCategoryId <= allCategories.length) {
+              if (spendCategoryId > 0 && spendCategoryId <= allCategories.length) {
                 final String categoryName = allCategories[spendCategoryId - 1];
                 totals[categoryName] = spent;
               }
@@ -79,20 +78,27 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
           setState(() {
             lastMonthTotals = totals;
             lastMonthTotalSpent = data['totalSpent'] ?? 0;
+            errorMessage = null;
           });
         } else {
-          debugPrint('API 응답 성공이지만 데이터가 없습니다: ${json['message']}');
+          setState(() {
+            errorMessage = '오류가 발생했습니다. 다시 시도해주세요.';
+          });
         }
       } else {
-        debugPrint('지난달 소비 API 실패: 상태코드 ${response.statusCode}');
-        debugPrint('에러 메시지: ${response.data}');
+        setState(() {
+         // 전송 관련한 오류가 아닌 관계로 errorMessage 표시하지 않음
+        });
       }
     } on DioException catch (e) {
       if (e.response != null) {
-        debugPrint('API 에러: 상태코드 ${e.response!.statusCode}');
-        debugPrint('에러 응답 데이터: ${e.response!.data}');
+        setState(() {
+          errorMessage = '오류가 발생했습니다. 다시 시도해주세요.';
+        });
       } else {
-        debugPrint('API 호출 중 오류: $e');
+        setState(() {
+          errorMessage = '오류가 발생했습니다. 다시 시도해주세요.';
+        });
       }
     }
   }
@@ -163,12 +169,12 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
         _showDialog('예산이 성공적으로 저장되었습니다!');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('서버 전송 실패: ${response.statusCode}')),
+          SnackBar(content: Text('서버 전송에 실패했습니다.')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('전송 중 오류 발생: $e')),
+        SnackBar(content: Text('전송 중 오류 발생')),
       );
     }
   }
