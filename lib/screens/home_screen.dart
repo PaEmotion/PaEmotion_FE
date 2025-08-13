@@ -8,6 +8,7 @@ import 'dart:math';
 import 'report_screen.dart';
 import 'budget_screen.dart';
 import 'challenge_screen.dart';
+import 'challenge_search_screen.dart';
 import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
@@ -80,7 +81,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   List<Record> _todaysRecords = [];
-  String _username = '사용자'; // 기본값
+  String _username = '사용자';
   String _randomGreeting = '';
 
   final List<String> _greetingMessages = [
@@ -128,11 +129,14 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      print('사용자 정보 요청 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('오류가 발생했습니다. 다시 시도해주세요.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
-
-
 
   Future<void> _loadTodayRecords() async {
     try {
@@ -147,10 +151,6 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
 
-      print('API 응답 상태: ${response.statusCode}');
-      print('API 응답 데이터 타입: ${response.data.runtimeType}');
-      print('API 응답 데이터 내용: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data as List<dynamic>;
         final allRecords = data.map((e) => Record.fromJson(e)).toList();
@@ -159,10 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _todaysRecords = allRecords;
         });
       } else {
-        throw Exception('API 호출 실패: 상태코드 ${response.statusCode}');
+        SnackBar(
+          content: Text('오류가 발생했습니다. 다시 시도해주세요.'),
+          duration: Duration(seconds: 3),
+        );
       }
     } catch (e) {
-      print('📛 네트워크 오류 또는 파싱 오류: $e');
       setState(() {
         _todaysRecords = [];
       });
@@ -201,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: color,
         value: entry.value,
         title: '',
-        radius: screenWidth * 0.08, // radius 반응형 적용 (8%)
+        radius: screenWidth * 0.08,
       );
     }).toList();
 
@@ -230,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06, vertical: screenWidth * 0.012),
       child: SizedBox(
-        height: screenWidth * 0.7, // 높이도 반응형으로 (70%)
+        height: screenWidth * 0.7,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -250,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final titleFontSize = screenWidth * 0.06;
-    final bodyFontSize = screenWidth * 0.045;
+    final bodyFontSize = screenWidth * 0.040;
     final numberFormat = NumberFormat('#,###');
     final totalAmount = _todaysRecords.fold(0, (sum, r) => sum + r.spendCost);
     final topCategory = _getTopCategory(_todaysRecords);
@@ -328,10 +330,10 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(height: screenWidth * 0.02),
           ..._todaysRecords.map((record) {
             final emotionId = record.emotion_category;
-            final emotionName = emotionMap[emotionId] ?? '감정없음';
+            final emotionName = emotionMap[emotionId] ?? '';
             final dotColor = emotionColors[emotionName] ?? Colors.grey;
             final backgroundColor = dotColor.withOpacity(0.1);
-            final catName = categoryMap[record.spend_category] ?? '기타';
+            final catName = categoryMap[record.spend_category] ?? '';
 
             return Container(
               margin: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
@@ -408,11 +410,24 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () =>
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          ),
+          if (_selectedIndex == 3)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChallengeSearchScreen()),
+                );
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyPageScreen()),
+              ),
+            ),
         ],
       ),
       body: _buildBody(),
