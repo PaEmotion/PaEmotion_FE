@@ -5,42 +5,73 @@ class ChallengeCreatingSuccessScreen extends StatelessWidget {
 
   const ChallengeCreatingSuccessScreen({super.key, required this.message});
 
+
+  double rWidth(BuildContext context, double base) {
+    final w = MediaQuery.of(context).size.width;
+    return base * (w / 390);
+  }
+
+
+  double rHeight(BuildContext context, double base) {
+    final h = MediaQuery.of(context).size.height;
+    return base * (h / 844);
+  }
+
+
+  double rFont(BuildContext context, double base) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    final w = MediaQuery.of(context).size.width;
+    return base * scale * (w / 390);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = rWidth(context, 24);
+    final buttonHeight = rHeight(context, 50);
+    final buttonRadius = rWidth(context, 8);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
+                style: TextStyle(
+                  fontSize: rFont(context, 22),
                   fontWeight: FontWeight.bold,
                   height: 1.4,
+                  color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 60),
+              SizedBox(height: rHeight(context, 60)),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: buttonHeight,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // 성공 화면 닫고
-                    Navigator.pop(context); // 챌린지 생성 화면 닫음
+                    Navigator.pop(context);
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(buttonRadius),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: Text(
+                    '챌린지 홈으로 돌아가기',
+                    style: TextStyle(
+                      fontSize: rFont(context, 16),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Text('챌린지 홈으로 돌아가기'),
                 ),
               ),
             ],

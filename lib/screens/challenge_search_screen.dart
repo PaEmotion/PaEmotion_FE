@@ -3,7 +3,6 @@ import 'dart:convert';
 import '../models/challenge.dart';
 import '../utils/challenge_utils.dart';
 
-
 class ChallengeSearchScreen extends StatefulWidget {
   const ChallengeSearchScreen({super.key});
 
@@ -19,7 +18,6 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
   bool _isLoading = false;
   String? _error;
 
-  // ✅ 현재 참여중 챌린지 존재 여부
   bool _hasCurrentChallenge = false;
   bool _isLoadingCurrent = false;
 
@@ -45,8 +43,7 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
       setState(() {
         _hasCurrentChallenge = id != null;
       });
-    } catch (e) {
-      // 조용히 실패 처리
+    } catch (_) {
       setState(() {
         _hasCurrentChallenge = false;
       });
@@ -67,9 +64,7 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
       return;
     }
 
-    // 키보드 닫기
     _searchFocus.unfocus();
-
     setState(() {
       _isLoading = true;
       _error = null;
@@ -78,7 +73,6 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
 
     try {
       final result = await ChallengeService.searchChallenge(keyword);
-
       if (result == null || result.isEmpty) {
         setState(() {
           _searchResults = [];
@@ -90,7 +84,7 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
           _error = null;
         });
       }
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _searchResults = [];
         _error = '검색 중 오류가 발생했습니다.';
@@ -102,8 +96,49 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
     }
   }
 
+
+  void _showChallengeDetailDialog(Challenge challenge) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(challenge.name),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: rHeight(context, 6)),
+              Text('챌린지 타입: ${challenge.challengeType ? '기니피그 밥 주기(긍정 소비)' : '기니피그 밥 지키기(부정 소비)'}'),
+              SizedBox(height: rHeight(context, 6)),
+              Text('공개 여부: ${challenge.publicityType ? '공개' : '비공개'}'),
+              SizedBox(height: rHeight(context, 6)),
+              Text(
+                challenge.challengeType
+                    ? '개인별 목표 소비 개수: ${challenge.goalCount}번'
+                    : '개인별 목표 소비 개수: ${challenge.goalCount}번 이하',
+              ),
+              SizedBox(height: rHeight(context, 6)),
+              Text('참여자 수: ${challenge.participantCount}명'),
+              SizedBox(height: rHeight(context, 6)),
+              Text('종료일: ${challenge.endDate.toIso8601String().split('T').first}'),
+              SizedBox(height: rHeight(context, 6)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showJoinChallengeDialog(challenge);
+            },
+            child: const Text('참여하기'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showJoinChallengeDialog(Challenge challenge) async {
-    // ✅ 이미 참여 중이면 참여 차단
     if (_hasCurrentChallenge) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -117,23 +152,42 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
     final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(challenge.name),
+        title: Text(
+          challenge.name,
+          style: TextStyle(fontSize: rFont(context, 16), fontWeight: FontWeight.bold),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('📆 종료일: ${challenge.endDate.toIso8601String().split('T').first}'),
-              Text('🎯 목표 개수: ${challenge.goalCount}'),
-              Text('👥 참여자 수: ${challenge.participantCount}명'),
-              const SizedBox(height: 12),
+              SizedBox(height: rHeight(context, 6)),
+              Text('챌린지 타입: ${challenge.challengeType ? '기니피그 밥 주기(긍정 소비)' : '기니피그 밥 지키기(부정 소비)'}'),
+              SizedBox(height: rHeight(context, 6)),
+              Text('공개 여부: ${challenge.publicityType ? '공개' : '비공개'}'),
+              SizedBox(height: rHeight(context, 6)),
+              Text(
+                challenge.challengeType
+                    ? '개인별 목표 소비 개수: ${challenge.goalCount}번'
+                    : '개인별 목표 소비 개수: ${challenge.goalCount}번 이하',
+              ),
+              SizedBox(height: rHeight(context, 6)),
+              Text('참여자 수: ${challenge.participantCount}명'),
+              SizedBox(height: rHeight(context, 6)),
+              Text('종료일: ${challenge.endDate.toIso8601String().split('T').first}'),
+              SizedBox(height: rHeight(context, 6)),
+              SizedBox(height: rHeight(context, 12)),
               if (!challenge.publicityType)
                 TextField(
                   controller: passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '비밀번호 입력',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: rWidth(context, 12),
+                      vertical: rHeight(context, 10),
+                    ),
                   ),
                 ),
             ],
@@ -142,11 +196,10 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, null),
-            child: const Text('취소'),
+            child: Text('취소', style: TextStyle(fontSize: rFont(context, 14))),
           ),
           TextButton(
             onPressed: () async {
-              // 비공개인데 비밀번호 없으면 바로 경고
               if (!challenge.publicityType &&
                   passwordController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -157,35 +210,26 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
 
               final response = await ChallengeService.joinChallenge(
                 challengeId: challenge.challengeId,
-                password: challenge.publicityType
-                    ? null
-                    : passwordController.text.trim(),
+                password:
+                challenge.publicityType ? null : passwordController.text.trim(),
               );
 
-              // 네트워크 오류 등으로 응답 자체가 없을 때
               if (response == null) {
                 Navigator.pop(context, {
                   'joined': false,
-                  'msg': '서버 응답이 없습니다. 네트워크를 확인해주세요.'
+                  'msg': '서버 응답이 없습니다. 네트워크를 확인해주세요.',
                 });
                 return;
               }
 
               if (response.statusCode == 200) {
-                // ✅ 로컬 저장 제거: 서버를 단일 소스로
-                Navigator.pop(context, {
-                  'joined': true,
-                  'msg': '챌린지에 참여했습니다!'
-                });
+                Navigator.pop(context, {'joined': true, 'msg': '챌린지에 참여했습니다!'});
               } else {
-                // 실패: 서버 메시지 그대로 노출
                 String msg = '챌린지 참여에 실패했습니다.';
                 final body = response.data;
-
                 if (body is Map) {
                   msg = (body['detail'] ?? body['message'] ?? msg).toString();
                 } else if (body is String) {
-                  // 문자열이면 JSON일 수도 있고 그냥 문자열일 수도 있음
                   try {
                     final parsed = jsonDecode(body);
                     if (parsed is Map && parsed['detail'] != null) {
@@ -193,41 +237,47 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
                     } else if (parsed is Map && parsed['message'] != null) {
                       msg = parsed['message'].toString();
                     } else {
-                      msg = body; // 그냥 문자열
+                      msg = body;
                     }
                   } catch (_) {
-                    msg = body; // JSON 아니면 원문 그대로
+                    msg = body;
                   }
                 }
-
-                Navigator.pop(context, {
-                  'joined': false,
-                  'msg': msg
-                });
+                Navigator.pop(context, {'joined': false, 'msg': msg});
               }
             },
-            child: const Text('참여하기'),
+            child: Text('참여하기', style: TextStyle(fontSize: rFont(context, 14))),
           ),
         ],
       ),
     );
 
-    // 다이얼로그 닫힌 뒤 결과 처리
     if (!mounted || result == null) return;
 
     final joined = result['joined'] == true;
-    final msg = (result['msg']?.toString() ?? (joined ? '참여 완료' : '참여 실패'));
+    final msg = (result['msg']?.toString() ??
+        (joined ? '참여 완료' : '참여 실패'));
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
     if (joined) {
-      // ✅ 참여 성공 시: 부모 화면에서 재조회할 수 있게 이 화면을 닫음
       Navigator.pop(context, true);
-      return;
     }
+  }
 
-    // 실패 시에는 현재 화면 유지. 필요하면 최근 목록 갱신
-    // await _search();
+  double rWidth(BuildContext context, double base) {
+    final w = MediaQuery.of(context).size.width;
+    return base * (w / 390);
+  }
+
+  double rHeight(BuildContext context, double base) {
+    final h = MediaQuery.of(context).size.height;
+    return base * (h / 844);
+  }
+
+  double rFont(BuildContext context, double base) {
+    final scale = MediaQuery.of(context).textScaleFactor;
+    return base * scale * (MediaQuery.of(context).size.width / 390);
   }
 
   @override
@@ -237,16 +287,20 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
         : _hasCurrentChallenge
         ? Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: rHeight(context, 12)),
+      padding: EdgeInsets.all(rWidth(context, 12)),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rWidth(context, 8)),
         border: Border.all(color: Colors.orange.shade200),
       ),
-      child: const Text(
+      child: Text(
         '이미 참여 중인 챌린지가 있어 새로 참여할 수 없습니다.',
-        style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: Colors.orange,
+          fontWeight: FontWeight.w600,
+          fontSize: rFont(context, 14),
+        ),
       ),
     )
         : const SizedBox.shrink();
@@ -254,55 +308,64 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('챌린지 검색', style: TextStyle(color: Colors.black87)),
+        title: Text(
+          '챌린지 검색',
+          style: TextStyle(fontSize: rFont(context, 18), color: Colors.black87),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 1,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(rWidth(context, 16)),
         child: Column(
           children: [
-            // 현재 상태 배너
             topBanner,
-
-            // 검색창
             Row(
               children: [
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(rWidth(context, 12)),
                     ),
                     child: TextField(
                       controller: _searchController,
                       focusNode: _searchFocus,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: '챌린지 이름을 입력하세요',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: rWidth(context, 16),
+                          vertical: rHeight(context, 14),
+                        ),
                       ),
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _search(),
+                      style: TextStyle(fontSize: rFont(context, 14)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _search,
-                  tooltip: '검색',
+                SizedBox(width: rWidth(context, 8)),
+                SizedBox(
+                  height: rHeight(context, 44),
+                  width: rWidth(context, 44),
+                  child: IconButton(
+                    icon: Icon(Icons.search, size: rWidth(context, 24)),
+                    onPressed: _search,
+                    tooltip: '검색',
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // 검색 결과
+            SizedBox(height: rHeight(context, 20)),
             if (_isLoading)
-              const CircularProgressIndicator()
+              SizedBox(
+                height: rHeight(context, 80),
+                child: Center(child: CircularProgressIndicator()),
+              )
             else if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red))
+              Text(_error!, style: TextStyle(color: Colors.red, fontSize: rFont(context, 14)))
             else if (_searchResults.isNotEmpty)
                 Expanded(
                   child: ListView.builder(
@@ -317,43 +380,53 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
                         opacity: disabled ? 0.6 : 1.0,
                         child: Card(
                           color: bgColor,
-                          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                          margin: EdgeInsets.symmetric(
+                            vertical: rHeight(context, 6),
+                            horizontal: rWidth(context, 4),
+                          ),
                           child: ListTile(
-                            contentPadding:
-                            const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: rHeight(context, 8),
+                              horizontal: rWidth(context, 16),
+                            ),
                             title: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  challenge.publicityType ? '공개 챌린지' : '비공개 챌린지',
+                                  challenge.publicityType
+                                      ? '공개 챌린지'
+                                      : '비공개 챌린지',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: rFont(context, 12),
                                     color: Colors.blueGrey[700],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: rHeight(context, 4)),
                                 Text(
                                   challenge.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                                    fontSize: rFont(context, 18),
                                     color: Colors.black87,
                                   ),
                                 ),
                               ],
                             ),
                             subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
+                              padding: EdgeInsets.only(top: rHeight(context, 8)),
                               child: Text(
                                 '목표: ${challenge.goalCount}개, 참여자: ${challenge.participantCount}명\n종료일: ${challenge.endDate.toIso8601String().split('T').first}',
-                                style: const TextStyle(fontSize: 14),
+                                style: TextStyle(fontSize: rFont(context, 14)),
                               ),
                             ),
                             trailing: Icon(
                               challenge.publicityType ? Icons.lock_open : Icons.lock,
                               color: Colors.blueGrey[700],
+                              size: rWidth(context, 24),
                             ),
-                            onTap: disabled ? null : () => _showJoinChallengeDialog(challenge),
+                            onTap: disabled
+                                ? null
+                                : () => _showChallengeDetailDialog(challenge),
                           ),
                         ),
                       );
