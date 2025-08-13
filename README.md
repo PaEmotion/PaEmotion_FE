@@ -1,16 +1,18 @@
-# paemotion
+# PaEmotion_FE
+PaEmotion Frontend Repository 입니다.
 
-A new Flutter project.
+<br>
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
+## 🙋‍♀️ 개발자
+- [김시연](https://github.com/siyeonnnnn) : frontend
+<br>
 
-A few resources to get you started if this is your first Flutter project:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 🛠 기술 스택
+### Frontend
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![Provider](https://img.shields.io/badge/Provider-4285F4?style=for-the-badge&logo=flutter&logoColor=white)
+![Dio](https://img.shields.io/badge/Dio-FFCA28?style=for-the-badge&logo=flutter&logoColor=black)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
