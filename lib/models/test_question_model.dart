@@ -7,7 +7,6 @@ class Choice {
     required this.traitKey,
   });
 
-  // ➤ toJson: 객체 → Map
   Map<String, dynamic> toJson() {
     return {
       'text': text,
@@ -15,7 +14,6 @@ class Choice {
     };
   }
 
-  // ➤ fromJson: Map → 객체
   factory Choice.fromJson(Map<String, dynamic> json) {
     return Choice(
       text: json['text'],
@@ -33,7 +31,6 @@ class Question {
     required this.choices,
   });
 
-  // 객체 → Map
   Map<String, dynamic> toJson() {
     return {
       'questionText': questionText,
@@ -41,7 +38,6 @@ class Question {
     };
   }
 
-  //  Map → 객체
   factory Question.fromJson(Map<String, dynamic> json) {
     return Question(
       questionText: json['questionText'],

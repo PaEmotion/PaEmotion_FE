@@ -52,7 +52,7 @@ class ParticipantInfo {
   factory ParticipantInfo.fromJson(Map<String, dynamic> json) {
     return ParticipantInfo(
       userId: json['userId'],
-      isMost: json['isMost'] ?? false, // null일 경우 false 처리
+      isMost: json['isMost'] ?? false,
       contributionRate: (json['contributionRate'] as num).toDouble(),
     );
   }

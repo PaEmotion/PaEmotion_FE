@@ -1,5 +1,5 @@
 class Report {
-  final String reportDate;   // 2025-07-20
+  final String reportDate;
   final String reportType;   // weekly, monthly
   final String reportText;
   final int reportId;

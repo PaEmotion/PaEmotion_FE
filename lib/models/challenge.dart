@@ -2,7 +2,7 @@ class Challenge {
   final int challengeId;
   final String name;
   final bool challengeType;     // true: feed, false: protect
-  final bool publicityType;     // true: 공개방, false: 비공개
+  final bool publicityType;     // true: 공개, false: 비공개
   final DateTime endDate;
   final int goalCount;
   final int participantCount;
