@@ -50,7 +50,7 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
         },
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200) {
         final msg = response.data['message'] ?? '비밀번호가 변경되었습니다.';
 
         if (!mounted) return;
@@ -61,11 +61,11 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('비밀번호 변경 실패: ${response.statusCode}')),
+          SnackBar(content: Text('비밀번호 변경 실패')),
         );
       }
     } on DioError catch (e) {
-      String msg = '오류가 발생했습니다.';
+      String msg = '오류가 발생했습니다. 다시 시도해주세요.';
       if (e.response?.data != null && e.response!.data is Map) {
         final data = e.response!.data;
         if (data['detail'] != null) msg = data['detail'];
@@ -77,7 +77,7 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('알 수 없는 오류: $e')),
+        SnackBar(content: Text('오류가 발생했습니다. 다시 시도해주세요.')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

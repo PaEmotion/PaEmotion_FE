@@ -1,8 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../api/api_client.dart';
 import '../models/user.dart';
 import '../utils/user_storage.dart';
@@ -47,7 +43,6 @@ class _MpEditScreenState extends State<MpEditScreen> {
   Future<void> _loadCurrentNickname() async {
     final profileJson = await UserStorage.loadProfileJson();
     if (profileJson == null) {
-      // 프로필 정보 없음 처리
       return;
     }
     final nickname = profileJson['nickname'] as String?;
@@ -82,7 +77,6 @@ class _MpEditScreenState extends State<MpEditScreen> {
     try {
       final profileJson = await UserStorage.loadProfileJson();
       if (profileJson == null) {
-        // 유저 정보 없음 처리
         return;
       }
       final user = User.fromJson(profileJson);
@@ -110,13 +104,13 @@ class _MpEditScreenState extends State<MpEditScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: ${response.statusCode}')),
+          SnackBar(content: Text('저장 중 오류가 발생했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('저장 중 오류가 발생했습니다: $e')),
+        SnackBar(content: Text('저장 중 오류가 발생했습니다. 다시 시도해주세요.')),
       );
     } finally {
       if (!mounted) return;

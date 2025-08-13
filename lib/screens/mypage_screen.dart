@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
-import '../utils/user_storage.dart';
+import '../utils/user_manager.dart';
 import 'mp_edit_screen.dart';
 import 'mp_pwreset_screen.dart';
 import 'test_main_screen.dart';
@@ -78,7 +77,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _logout() async {
-    await UserStorage.clearProfile();
+    await UserManager().logout();
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -118,7 +117,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 닉네임 영역
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -189,25 +187,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       },
                       trailing: const Icon(Icons.chevron_right),
                     ),
-                    const Spacer(),
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 300),
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.logout),
-                          label: Text('로그아웃', style: bodyStyle.copyWith(color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: _logout,
-                        ),
-                      ),
+
+                    const Divider(height: 40),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.logout),
+                      title: Text('로그아웃'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _logout,
                     ),
                   ],
                 ),
