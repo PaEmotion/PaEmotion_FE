@@ -125,7 +125,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('수정 중 오류 발생: $e')),
+        SnackBar(content: Text('수정 중 오류가 발생했습니다. 다시 시도해주세요.')),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -163,243 +163,205 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제 실패: ${response.statusCode}')),
+          SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 중 오류 발생: $e')),
+        SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
       );
     } finally {
       setState(() => _isDeleting = false);
     }
   }
 
-  double _responsiveFont(double base, BuildContext context) {
-    final scale = MediaQuery.of(context).textScaleFactor;
-    final computed = base * scale;
-    return computed.clamp(base * 0.9, base * 1.3);
-  }
-
-  EdgeInsets _formPadding(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final horizontal = width < 360 ? 12.0 : 20.0;
-    return EdgeInsets.symmetric(horizontal: horizontal, vertical: 12);
-  }
-
-  Size _buttonSize(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    return Size(double.infinity, width < 360 ? 48 : 56);
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, top: 12),
+      child: Row(
+        children: [
+          const Text('•', style: TextStyle(fontSize: 20, color: Colors.black87)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    double maxWidth = width < 400 ? width * 0.95 : 400;
+    double fontSize = width < 350 ? 14 : 16;
+    double paddingHorizontal = width < 350 ? 12 : 16;
+
     final recordDateStr =
     DateFormat('yyyy년 M월 d일').format(DateTime.parse(widget.record.spendDate));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          '소비 기록 수정하기',
-          style: TextStyle(
-            fontSize: _responsiveFont(18, context),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        toolbarHeight: 56,
-      ),
-      body: Padding(
-        padding: _formPadding(context),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              Text(
-                '기록 일자: $recordDateStr',
-                style: TextStyle(
-                  fontSize: _responsiveFont(16, context),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (!_isToday) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '※ 과거 기록은 수정하거나 삭제할 수 없습니다.',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: _responsiveFont(14, context),
-                  ),
-                ),
-              ],
-              SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: '무엇을 소비했나요? (카테고리)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                items: _categories
-                    .map((cat) => DropdownMenuItem(
-                  value: cat,
-                  child: Text(
-                    cat,
-                    style: TextStyle(fontSize: _responsiveFont(14, context)),
-                  ),
-                ))
-                    .toList(),
-                onChanged: _isToday
-                    ? (value) => setState(() {
-                  if (value != null) _selectedCategory = value;
-                })
-                    : null,
-                validator: (value) =>
-                value == null || value.isEmpty ? '카테고리를 선택해주세요.' : null,
-                style: TextStyle(fontSize: _responsiveFont(14, context), color: Colors.black),
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _itemController,
-                enabled: _isToday,
-                decoration: InputDecoration(
-                  labelText: '품목 이름',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? '품목 이름을 입력해주세요.'
-                    : null,
-                style: TextStyle(fontSize: _responsiveFont(14, context)),
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _amountController,
-                enabled: _isToday,
-                decoration: InputDecoration(
-                  labelText: '금액',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return '금액을 입력해주세요.';
-                  final number = double.tryParse(value);
-                  if (number == null || number <= 0) return '유효한 금액을 입력해주세요.';
-                  return null;
-                },
-                style: TextStyle(fontSize: _responsiveFont(14, context)),
-              ),
-              SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedEmotion,
-                decoration: InputDecoration(
-                  labelText: '어떤 감정이었나요?',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                items: _emotions
-                    .map((emotion) => DropdownMenuItem(
-                  value: emotion,
-                  child: Text(
-                    emotion,
-                    style: TextStyle(fontSize: _responsiveFont(14, context)),
-                  ),
-                ))
-                    .toList(),
-                onChanged: _isToday
-                    ? (value) => setState(() {
-                  if (value != null) _selectedEmotion = value;
-                })
-                    : null,
-                validator: (value) =>
-                value == null || value.isEmpty ? '감정을 선택해주세요.' : null,
-                style: TextStyle(fontSize: _responsiveFont(14, context), color: Colors.black),
-              ),
-              SizedBox(height: 32),
-              SizedBox(
-                width: _buttonSize(context).width,
-                height: _buttonSize(context).height,
-                child: ElevatedButton(
-                  onPressed: _isToday && !_isSaving ? _saveRecord : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+      appBar: AppBar(title: const Text('소비 기록 수정하기')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding:
+            EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: 16),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                children: [
+                  _buildLabel('기록 일자'),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF1A1A1A)),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : Text(
-                    '수정하기',
-                    style: TextStyle(
-                      fontSize: _responsiveFont(18, context),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    child: Text(
+                      recordDateStr,
+                      style: TextStyle(fontSize: fontSize),
                     ),
                   ),
-                ),
-              ),
-              SizedBox(height: 16),
-              SizedBox(
-                width: _buttonSize(context).width,
-                height: _buttonSize(context).height,
-                child: OutlinedButton(
-                  onPressed: _isToday && !_isDeleting ? _confirmDelete : null,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  _buildLabel('무엇을 소비했나요?'),
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      border: const UnderlineInputBorder(),
+                      isDense: true,
+                      contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 0),
+                    value: _selectedCategory,
+                    items: _categories
+                        .map((cat) => DropdownMenuItem(
+                      value: cat,
+                      child: Text(cat, style: TextStyle(fontSize: fontSize)),
+                    ))
+                        .toList(),
+                    onChanged: _isToday
+                        ? (value) => setState(() {
+                      if (value != null) _selectedCategory = value;
+                    })
+                        : null,
                   ),
-                  child: _isDeleting
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.red,
-                      strokeWidth: 2,
+                  _buildLabel('소비한 품목'),
+                  TextFormField(
+                    controller: _itemController,
+                    enabled: _isToday,
+                    decoration: InputDecoration(
+                      border: const UnderlineInputBorder(),
+                      isDense: true,
+                      contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                     ),
-                  )
-                      : Text(
-                    '삭제하기',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontSize: _responsiveFont(16, context),
+                    style: TextStyle(fontSize: fontSize),
+                    validator: (value) =>
+                    value == null || value.trim().isEmpty ? '품목을 입력하세요.' : null,
+                  ),
+                  _buildLabel('금액을 적어주세요'),
+                  TextFormField(
+                    controller: _amountController,
+                    enabled: _isToday,
+                    decoration: InputDecoration(
+                      border: const UnderlineInputBorder(),
+                      isDense: true,
+                      contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    ),
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(fontSize: fontSize),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return '금액을 입력하세요.';
+                      }
+                      final number = int.tryParse(value);
+                      if (number == null || number <= 0) {
+                        return '유효한 금액을 입력하세요.';
+                      }
+                      return null;
+                    },
+                  ),
+                  _buildLabel('어떤 감정이었나요?'),
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      border: const UnderlineInputBorder(),
+                      isDense: true,
+                      contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    ),
+                    value: _selectedEmotion,
+                    items: _emotions
+                        .map((emotion) => DropdownMenuItem(
+                      value: emotion,
+                      child: Text(emotion, style: TextStyle(fontSize: fontSize)),
+                    ))
+                        .toList(),
+                    onChanged: _isToday
+                        ? (value) => setState(() {
+                      if (value != null) _selectedEmotion = value;
+                    })
+                        : null,
+                  ),
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1A1A1A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: _isToday && !_isSaving ? _saveRecord : null,
+                    child: _isSaving
+                        ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : Text(
+                      '수정하기',
+                      style: TextStyle(
+                          fontSize: fontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: _isToday && !_isDeleting ? _confirmDelete : null,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _isDeleting
+                        ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.red,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : Text(
+                      '삭제하기',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),

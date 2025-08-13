@@ -89,7 +89,6 @@ class _RecordListScreenState extends State<RecordListScreen> {
     return false;
   }
 
-
   double _clampFont(double size, BuildContext context) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final computed = size * scale;
@@ -114,7 +113,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            '${widget.selectedDate ?? '오늘'} 소비기록 수정',
+            '오늘 소비기록 수정',
             style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w600),
           ),
           leading: IconButton(
@@ -143,7 +142,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
                   child: _dateRecords.isEmpty
                       ? Center(
                     child: Text(
-                      '${widget.selectedDate ?? '오늘'}의 소비 기록이 없습니다.',
+                      '오늘 소비 기록이 없습니다.',
                       style: TextStyle(fontSize: bodyFontSize),
                       textAlign: TextAlign.center,
                     ),
