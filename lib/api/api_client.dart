@@ -4,11 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../utils/user_manager.dart';
 import '../models/user.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: '서버 URL',
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
@@ -17,7 +18,7 @@ class ApiClient {
 
   static final Dio _refreshDio = Dio(
     BaseOptions(
-      baseUrl: '서버 URL',
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
