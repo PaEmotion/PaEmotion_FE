@@ -6,7 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'utils/user_manager.dart';
 import 'utils/authutils.dart';
 import 'screens/login_screen.dart';
@@ -21,6 +21,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -45,6 +47,7 @@ void main() async {
     ),
   );
 }
+
 
 class OfflineApp extends StatelessWidget {
   const OfflineApp({super.key});
@@ -143,20 +146,27 @@ class _MyAppState extends State<MyApp> {
   void _processDeepLink(Uri uri) {
     if (!mounted) return;
 
-    setState(() {
-      _initialUri = uri;
-    });
-
     if (uri.path == '/reset-password') {
       final token = uri.queryParameters['token'];
       if (token != null && token.isNotEmpty) {
-        _deepLinkToken = token;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          navigatorKey.currentState?.pushNamed(
+            '/reset-password',
+            arguments: token,
+          );
+        });
       }
     } else if (uri.path == '/verify-email') {
       final token = uri.queryParameters['token'];
       if (token != null && token.isNotEmpty) {
-        final provider = Provider.of<EmailVerificationProvider>(navigatorKey.currentContext!, listen: false);
+        final provider = Provider.of<EmailVerificationProvider>(
+          navigatorKey.currentContext!,
+          listen: false,
+        );
         provider.setToken(token);
+        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+          const SnackBar(content: Text('이메일 인증 완료! 계속 회원가입을 진행해주세요.')),
+        );
       }
     }
   }
@@ -243,23 +253,41 @@ class _MyAppState extends State<MyApp> {
       themeMode: ThemeMode.system,
       theme: _lightTheme(),
       darkTheme: _darkTheme(),
-      initialRoute: initialRoute,
+      onGenerateRoute: (settings) {
+        // 딥링크로 들어온 경우
+        if (_deepLinkToken != null && settings.name == '/reset-password') {
+          return MaterialPageRoute(
+            builder: (_) => DeepLinkResetPasswordScreen(initialToken: _deepLinkToken),
+          );
+        }
+
+        // 온보딩을 아직 안 본 경우
+        if (_hasSeenOnboarding == false) {
+          return MaterialPageRoute(
+            builder: (_) => const OnboardingScreen(),
+          );
+        }
+
+        // 로그인 상태에 따라 분기
+        if (isLoggedIn == true) {
+          return MaterialPageRoute(
+            builder: (_) => TokenCheckerWidget(
+              onLogout: _handleLogout,
+              child: const HomeScreen(),
+            ),
+          );
+        } else {
+          return MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          );
+        }
+      },
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/pw-reset': (context) => const PwResetScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
-        '/reset-password': (context) => DeepLinkResetPasswordScreen(initialToken: _deepLinkToken),
-      },
-      builder: (context, child) {
-        if (_deepLinkToken != null) {
-          return child!;
-        }
-        if (isLoggedIn == true) {
-          return TokenCheckerWidget(onLogout: _handleLogout, child: child ?? const HomeScreen());
-        } else {
-          return child ?? const LoginScreen();
-        }
+        // '/reset-password'는 onGenerateRoute에서 처리하므로 생략 가능
       },
     );
   }
