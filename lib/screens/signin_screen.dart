@@ -32,28 +32,6 @@ class _SignInScreenState extends State<SignInScreen> {
       RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
   bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    final provider = Provider.of<EmailVerificationProvider>(context);
-    final token = provider.token;
-
-    if (token != null && !_isEmailVerified) {
-      setState(() {
-        _isEmailVerified = true;
-      });
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이메일 인증이 완료되었습니다!')),
-        );
-      });
-
-      provider.clearToken();
-    }
-  }
-
   // 이메일 인증 요청
   Future<void> _verifyEmail() async {
     final email = _emailController.text.trim();
@@ -143,72 +121,87 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('회원가입')),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isWide = constraints.maxWidth > 600;
-          double formWidth = isWide ? 500 : double.infinity;
+    return Consumer<EmailVerificationProvider>(
+      builder: (context, provider, child) {
+        final token = provider.token;
 
-          return Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isWide ? 24 : 16,
-                vertical: 24,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: formWidth),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      isWide
-                          ? IntrinsicHeight(
-                        child: Row(
-                          children: [
-                            Expanded(child: _buildEmailField()),
-                            const SizedBox(width: 10),
-                            _buildVerifyButton(),
-                          ],
-                        ),
-                      )
-                          : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+        if (token != null && !_isEmailVerified) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('이메일 인증이 완료되었습니다!')),
+            );
+          });
+
+          provider.clearToken();
+          _isEmailVerified = true;
+        }
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('회원가입')),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              bool isWide = constraints.maxWidth > 600;
+              double formWidth = isWide ? 500 : double.infinity;
+
+              return Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isWide ? 24 : 16,
+                    vertical: 24,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: formWidth),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
                         children: [
-                          _buildEmailField(),
+                          isWide
+                              ? IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(child: _buildEmailField()),
+                                const SizedBox(width: 10),
+                                _buildVerifyButton(),
+                              ],
+                            ),
+                          )
+                              : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildEmailField(),
+                              const SizedBox(height: 10),
+                              _buildVerifyButton(),
+                            ],
+                          ),
                           const SizedBox(height: 10),
-                          _buildVerifyButton(),
+                          _buildEmailStatus(),
+                          const SizedBox(height: 20),
+                          _buildPasswordField(),
+                          const SizedBox(height: 20),
+                          _buildConfirmPasswordField(),
+                          const SizedBox(height: 20),
+                          _buildNameField(),
+                          const SizedBox(height: 20),
+                          _buildNicknameField(),
+                          const SizedBox(height: 30),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _signUp,
+                              child: const Text('회원가입'),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      _buildEmailStatus(),
-
-                      const SizedBox(height: 20),
-                      _buildPasswordField(),
-                      const SizedBox(height: 20),
-                      _buildConfirmPasswordField(),
-                      const SizedBox(height: 20),
-                      _buildNameField(),
-                      const SizedBox(height: 20),
-                      _buildNicknameField(),
-                      const SizedBox(height: 30),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _signUp,
-                          child: const Text('회원가입'),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
