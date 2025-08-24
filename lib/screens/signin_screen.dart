@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import 'signinsuccess_screen.dart';
 import '../utils/email_verification_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'termswebview_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -25,12 +27,18 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _obscureConfirmPassword = true;
 
   bool _isEmailVerified = false;
+  bool _agreeTerms = false;
+  bool _agreePrivacy = false;
 
   bool _hasEnglish(String input) => RegExp(r'[A-Za-z]').hasMatch(input);
   bool _hasDigit(String input) => RegExp(r'\d').hasMatch(input);
   bool _hasSpecialChar(String input) =>
       RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(input);
   bool _hasNoWhitespace(String input) => !RegExp(r'\s').hasMatch(input);
+
+  final termsUrl = dotenv.env['TERMS_URL'] ?? '';
+  final privacyUrl = dotenv.env['PRIVACY_URL'] ?? '';
+
 
   // 이메일 인증 요청
   Future<void> _verifyEmail() async {
@@ -79,6 +87,13 @@ class _SignInScreenState extends State<SignInScreen> {
       return;
     }
 
+    if (!(_agreeTerms && _agreePrivacy)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('약관 및 개인정보 처리방침에 동의해야 합니다')),
+      );
+      return;
+    }
+
     try {
       final response = await ApiClient.dio.post(
         '/users/signup',
@@ -119,6 +134,15 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  void openWebLink(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TermsWebViewPage(url: url),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<EmailVerificationProvider>(
@@ -155,6 +179,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       key: _formKey,
                       child: Column(
                         children: [
+                          // 이메일 + 인증
                           isWide
                               ? IntrinsicHeight(
                             child: Row(
@@ -183,12 +208,56 @@ class _SignInScreenState extends State<SignInScreen> {
                           _buildNameField(),
                           const SizedBox(height: 20),
                           _buildNicknameField(),
+                          const SizedBox(height: 20),
+
+                          // 약관 체크박스
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _agreeTerms,
+                                    onChanged: (val) =>
+                                        setState(() => _agreeTerms = val!),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => openWebLink(context, termsUrl),
+                                    child: const Text(
+                                      '이용약관 동의 (필수)',
+                                      style: TextStyle(
+                                          decoration: TextDecoration.underline),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _agreePrivacy,
+                                    onChanged: (val) =>
+                                        setState(() => _agreePrivacy = val!),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => openWebLink(context, privacyUrl),
+                                    child: const Text(
+                                      '개인정보 처리방침 동의 (필수)',
+                                      style: TextStyle(
+                                          decoration: TextDecoration.underline),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
                           const SizedBox(height: 30),
                           SizedBox(
                             width: double.infinity,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _signUp,
+                              onPressed:
+                              (_agreeTerms && _agreePrivacy) ? _signUp : null,
                               child: const Text('회원가입'),
                             ),
                           ),
