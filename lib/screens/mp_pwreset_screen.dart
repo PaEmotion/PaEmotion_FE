@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/user_api.dart';
 
 class MpPwResetScreen extends StatefulWidget {
   const MpPwResetScreen({super.key});
@@ -43,7 +44,7 @@ class _MpPwResetScreenState extends State<MpPwResetScreen> {
 
     try {
       final response = await ApiClient.dio.put(
-        '/users/password',
+        UserApi.updatePassword,
         data: {
           'current_password': _currentPwController.text.trim(),
           'new_password': _newPwController.text.trim(),

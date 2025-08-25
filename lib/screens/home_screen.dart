@@ -13,6 +13,8 @@ import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
 import '../models/record.dart';
+import '../constants/api_endpoints/user_api.dart';
+import '../constants/api_endpoints/record_api.dart';
 
 final Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -117,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUserFromApi() async {
     try {
-      final response = await ApiClient.dio.get('/users/me');
+      final response = await ApiClient.dio.get(UserApi.me);
 
       if (response.statusCode == 200) {
         final body = response.data;
@@ -144,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final tomorrow = today.add(const Duration(days: 1));
 
       final response = await ApiClient.dio.get(
-        '/records/me',
+        RecordApi.list,
         queryParameters: {
           'startDate': DateFormat('yyyy-MM-dd').format(today),
           'endDate': DateFormat('yyyy-MM-dd').format(tomorrow),

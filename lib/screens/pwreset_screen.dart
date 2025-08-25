@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/auth_api.dart';
 
 class PwResetScreen extends StatefulWidget {
   const PwResetScreen({super.key});
@@ -27,7 +28,7 @@ class _PwResetScreenState extends State<PwResetScreen> {
 
     try {
       final response = await ApiClient.dio.post(
-        '/request-password-reset',
+        AuthApi.requestPasswordReset,
         data: {'email': email},
       );
 

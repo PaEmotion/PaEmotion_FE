@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import '../models/reportrequest.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/report_api.dart';
+
 class ReportUtils {
   static const _cacheKey = 'cached_reports';
   static const _lastUpdatedKey = 'last_report_update';
@@ -68,7 +70,7 @@ class ReportUtils {
     final dio = ApiClient.dio;
     try {
       final response = await dio.get(
-        '/reports',
+        ReportApi.listByPeriod,
         queryParameters: {
           'userId': userId,
           'startDate': startDate,
@@ -174,7 +176,7 @@ class ReportUtils {
 
     try {
       final response = await dio.post(
-        '/reports/create',
+        ReportApi.create,
         queryParameters: {'userId': userId},
         data: request.toJson(),
       );
@@ -204,7 +206,7 @@ class ReportUtils {
 
     try {
       final response = await dio.post(
-        '/reports/create',
+        ReportApi.create,
         queryParameters: {'userId': userId},
         data: request.toJson(),
       );

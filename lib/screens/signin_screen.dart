@@ -6,6 +6,7 @@ import 'signinsuccess_screen.dart';
 import '../utils/email_verification_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'termswebview_screen.dart';
+import '../constants/api_endpoints/auth_api.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -57,7 +58,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     try {
-      final response = await ApiClient.dio.post('/request-email-verification',
+      final response = await ApiClient.dio.post(AuthApi.requestEmailVerification,
           data: {'email': email});
 
       if (response.statusCode == 200) {
@@ -96,7 +97,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     try {
       final response = await ApiClient.dio.post(
-        '/users/signup',
+        AuthApi.signup,
         data: {
           'email': _emailController.text.trim(),
           'password': _passwordController.text.trim(),

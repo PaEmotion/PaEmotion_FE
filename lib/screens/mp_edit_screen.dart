@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
 import '../utils/user_storage.dart';
+import '../constants/api_endpoints/user_api.dart';
 
 class MpEditScreen extends StatefulWidget {
   const MpEditScreen({super.key});
@@ -82,7 +83,7 @@ class _MpEditScreenState extends State<MpEditScreen> {
       final user = User.fromJson(profileJson);
 
       final response = await ApiClient.dio.put(
-        '/users/nickname',
+        UserApi.updateNickname,
         data: {'new_nickname': newNickname},
       );
 

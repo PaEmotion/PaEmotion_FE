@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/auth_api.dart';
 
 class DeepLinkResetPasswordScreen extends StatefulWidget {
   final String? initialToken;
@@ -90,7 +91,7 @@ class _DeepLinkResetPasswordScreenState extends State<DeepLinkResetPasswordScree
 
     try {
       final response = await ApiClient.dio.post(
-        '/users/reset-password',
+        AuthApi.resetPassword,
         data: {
           'token': _token,
           'new_password': newPassword,

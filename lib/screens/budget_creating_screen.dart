@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/budget_api.dart';
 
 class BudgetCreatingScreen extends StatefulWidget {
   const BudgetCreatingScreen({super.key});
@@ -54,7 +55,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
 
     try {
       final response = await dio.get(
-        '/budgets/lastspent/me',
+        BudgetApi.lastMonthSpent,
         queryParameters: {'lastMonth': lastMonthStr},
       );
 
@@ -161,7 +162,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     try {
       final dio = ApiClient.dio;
       final response = await dio.post(
-        '/budgets/create',
+        BudgetApi.create,
         data: requestBody,
       );
 
