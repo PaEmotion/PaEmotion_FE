@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'login_screen.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
@@ -7,6 +7,9 @@ import '../utils/user_manager.dart';
 import 'mp_edit_screen.dart';
 import 'mp_pwreset_screen.dart';
 import 'test_main_screen.dart';
+import 'termswebview_screen.dart';
+import '../constants/api_endpoints/user_api.dart';
+
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -16,6 +19,8 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
+  final alltermsUrl = dotenv.env['ALLTERMS_URL'] ?? '';
+
   String? _nickname = '사용자';
   bool _isLoading = true;
 
@@ -48,7 +53,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _fetchUserInfo() async {
     try {
       final response = await ApiClient.dio.get(
-        '/users/me',
+        UserApi.me,
       );
 
       if (response.statusCode == 200) {
@@ -84,6 +89,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,
+    );
+  }
+
+  void openWebLink(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TermsWebViewPage(url: url),
+      ),
     );
   }
 
@@ -187,7 +201,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       },
                       trailing: const Icon(Icons.chevron_right),
                     ),
-
+                    const Divider(height: 40),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.edit_note_outlined),
+                      title: Text('이용약관 및 개인정보처리방침'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => openWebLink(context, alltermsUrl),
+                    ),
                     const Divider(height: 40),
                     ListTile(
                       contentPadding: EdgeInsets.zero,

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'recordsuccess_screen.dart';
 import '../api/api_client.dart';
 import '../utils/user_storage.dart';
+import '../constants/api_endpoints/record_api.dart';
 
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
@@ -67,7 +68,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
     try {
       final response = await ApiClient.dio.post(
-          '/records/create', data: recordData);
+          RecordApi.create, data: recordData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;

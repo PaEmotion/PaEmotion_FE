@@ -6,6 +6,7 @@ import 'pwreset_screen.dart';
 import '../utils/user_manager.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
+import '../constants/api_endpoints/auth_api.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await ApiClient.dio.post(
-        '/users/login',
+        AuthApi.login,
         data: {
           'email': _emailController.text.trim(),
           'password': _passwordController.text.trim(),

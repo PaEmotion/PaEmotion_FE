@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-
+import '../constants/api_endpoints/budget_api.dart';
+import '../constants/api_endpoints/ml_api.dart';
+import '../constants/api_endpoints/record_api.dart';
 import '../models/record.dart';
 import '../api/api_client.dart';
 import 'budget_creating_screen.dart';
@@ -51,7 +53,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     try {
       // 예산 데이터 조회
       final budgetRes = await ApiClient.dio.get(
-        '/budgets/me',
+        BudgetApi.me,
         queryParameters: {'budgetMonth': budgetMonthStr},
       );
       final body = budgetRes.data;
@@ -90,7 +92,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         totalSpending += amount;
       }
 
-      final response = await ApiClient.dio.get('/ml/predict');
+      final response = await ApiClient.dio.get(MlApi.predictBudget);
       final data = response.data['data'];
       final String predictionStr = data['예측'];
       final numericString = predictionStr.replaceAll(RegExp(r'[^0-9]'), '');
@@ -116,7 +118,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final dio = ApiClient.dio;
 
     try {
-      final res = await dio.get('/records/me', queryParameters: {
+      final res = await dio.get(RecordApi.list, queryParameters: {
         'startDate': DateFormat('yyyy-MM-dd').format(start),
         'endDate': DateFormat('yyyy-MM-dd').format(end),
       });

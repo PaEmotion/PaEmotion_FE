@@ -1,13 +1,14 @@
 import 'package:dio/dio.dart';
 import '../models/challenge.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/challenge_api.dart';
 
 class ChallengeService {
   // 현재 참여중인 챌린지 ID 조회
   static Future<int?> getCurrentChallengeId() async {
     try {
       final response = await ApiClient.dio.get(
-        '/challenges/current',
+        ChallengeApi.current,
         options: Options(validateStatus: (status) => true),
       );
 
@@ -49,7 +50,7 @@ class ChallengeService {
       if (!publicityType && password != null && password.isNotEmpty) {
         body['password'] = password;
       }
-      final response = await ApiClient.dio.post('/challenges/create', data: body);
+      final response = await ApiClient.dio.post(ChallengeApi.create, data: body);
       return response;
     } on DioException catch (e) {
       return e.response;
@@ -66,7 +67,7 @@ class ChallengeService {
       if (password != null && password.isNotEmpty) {
         body['password'] = password;
       }
-      final response = await ApiClient.dio.post('/challenges/join', data: body);
+      final response = await ApiClient.dio.post(ChallengeApi.join, data: body);
       final responseData = response.data['data'];
       return responseData;
     } on DioException catch (e) {
@@ -78,7 +79,7 @@ class ChallengeService {
   static Future<List<Challenge>?> searchChallenge(String keyword) async {
     try {
       final response = await ApiClient.dio.get(
-        '/challenges/search',
+        ChallengeApi.search,
         queryParameters: {'name': keyword},
       );
 
@@ -98,7 +99,7 @@ class ChallengeService {
   // 챌린지 목록 조회
   static Future<List<Challenge>> getChallengeList() async {
     try {
-      final response = await ApiClient.dio.get('/challenges');
+      final response = await ApiClient.dio.get(ChallengeApi.list);
       final Map<String, dynamic> rawData = response.data;
       final data = rawData['data'];
 
@@ -115,7 +116,7 @@ class ChallengeService {
   // 챌린지 단건 조회
   static Future<Challenge?> getChallengeById(int challengeId) async {
     try {
-      final response = await ApiClient.dio.get('/challenges/$challengeId');
+      final response = await ApiClient.dio.get(ChallengeApi.detail(challengeId));
       final Map<String, dynamic> rawData = response.data;
 
       if (rawData['success'] != true) {
@@ -136,7 +137,7 @@ class ChallengeService {
   // 챌린지 상세 조회
   static Future<Map<String, dynamic>?> getChallengeDetail(int challengeId) async {
     try {
-      final response = await ApiClient.dio.get('/challenges/detail/$challengeId');
+      final response = await ApiClient.dio.get(ChallengeApi.fullDetail(challengeId));
       final Map<String, dynamic> rawData = response.data;
       final data = rawData['data'];
       if (data is Map<String, dynamic>) {
