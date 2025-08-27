@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/budget_api.dart';
 
 class BudgetCreatingScreen extends StatefulWidget {
   const BudgetCreatingScreen({super.key});
@@ -14,7 +15,13 @@ class BudgetCreatingScreen extends StatefulWidget {
 class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   String? errorMessage;
   final String currentMonth =
-      "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}";
+      "${DateTime
+      .now()
+      .year}-${DateTime
+      .now()
+      .month
+      .toString()
+      .padLeft(2, '0')}";
 
   final List<String> allCategories = [
     '쇼핑', '배달음식', '외식', '카페', '취미', '뷰티', '건강', '자기계발', '선물', '여행', '모임'
@@ -45,7 +52,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   String _getLastMonth() {
     final now = DateTime.now();
     final lastMonthDate = DateTime(now.year, now.month - 1);
-    return '${lastMonthDate.year}-${lastMonthDate.month.toString().padLeft(2, '0')}';
+    return '${lastMonthDate.year}-${lastMonthDate.month.toString().padLeft(
+        2, '0')}';
   }
 
   Future<void> _loadLastMonthSpendingFromApi() async {
@@ -54,7 +62,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
 
     try {
       final response = await dio.get(
-        '/budgets/lastspent/me',
+        BudgetApi.lastMonthSpent,
         queryParameters: {'lastMonth': lastMonthStr},
       );
 
@@ -68,7 +76,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
             for (final item in data['categorySpent']) {
               final int spendCategoryId = item['spendCategoryId'];
               final int spent = item['spent'];
-              if (spendCategoryId > 0 && spendCategoryId <= allCategories.length) {
+              if (spendCategoryId > 0 &&
+                  spendCategoryId <= allCategories.length) {
                 final String categoryName = allCategories[spendCategoryId - 1];
                 totals[categoryName] = spent;
               }
@@ -87,7 +96,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
         }
       } else {
         setState(() {
-         // 전송 관련한 오류가 아닌 관계로 errorMessage 표시하지 않음
+          // 전송 관련한 오류가 아닌 관계로 errorMessage 표시하지 않음
         });
       }
     } on DioException catch (e) {
@@ -105,7 +114,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
 
   void _addBudgetItem() {
     final selected = budgetItems.map((e) => e['category'] as String).toSet();
-    final available = allCategories.where((c) => !selected.contains(c)).toList();
+    final available = allCategories.where((c) => !selected.contains(c))
+        .toList();
 
     if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,10 +151,12 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
       }
     }
 
-    final List<Map<String, dynamic>> categoryBudgetJson = budgetItems.map((item) {
+    final List<Map<String, dynamic>> categoryBudgetJson = budgetItems.map((
+        item) {
       final categoryName = item['category'] as String;
       final spendCategoryId = allCategories.indexOf(categoryName) + 1;
-      final amount = int.parse((item['controller'] as TextEditingController).text);
+      final amount = int.parse(
+          (item['controller'] as TextEditingController).text);
       return {
         'spendCategoryId': spendCategoryId,
         'amount': amount,
@@ -161,7 +173,7 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
     try {
       final dio = ApiClient.dio;
       final response = await dio.post(
-        '/budgets/create',
+        BudgetApi.create,
         data: requestBody,
       );
 
@@ -182,18 +194,19 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   void _showDialog(String message) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, true);
-            },
-            child: const Text('확인'),
+      builder: (_) =>
+          AlertDialog(
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context, true);
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -206,24 +219,34 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
   }
 
   double responsiveWidth(BuildContext context, double w) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
     return screenWidth * (w / 375);
   }
 
   double responsiveHeight(BuildContext context, double h) {
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
     return screenHeight * (h / 812);
   }
 
   double responsiveFont(BuildContext context, double size) {
-    final scale = MediaQuery.of(context).textScaleFactor;
+    final scale = MediaQuery
+        .of(context)
+        .textScaleFactor;
     return size * scale;
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final selected = budgetItems.map((e) => e['category'] as String).toSet();
-    final available = allCategories.where((c) => !selected.contains(c)).toList();
+    final available = allCategories.where((c) => !selected.contains(c))
+        .toList();
 
     final horizontalPadding = responsiveWidth(context, 20);
     final verticalSpacing = responsiveHeight(context, 12);
@@ -233,7 +256,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
       appBar: AppBar(
         title: Text(
           '예산 설정하기',
-          style: TextStyle(fontSize: responsiveFont(context, 18), fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: responsiveFont(context, 18),
+              fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -241,7 +265,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
         centerTitle: false,
       ),
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalSpacing),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: verticalSpacing),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -277,20 +302,26 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                                 value: category,
                                 isExpanded: true,
                                 items: allCategories
-                                    .where((c) => c == category || !selected.contains(c))
-                                    .map((c) => DropdownMenuItem(
-                                  value: c,
-                                  child: Text(
-                                    c,
-                                    style: TextStyle(fontSize: responsiveFont(context, 14)),
-                                  ),
-                                ))
+                                    .where((c) =>
+                                c == category || !selected.contains(c))
+                                    .map((c) =>
+                                    DropdownMenuItem(
+                                      value: c,
+                                      child: Text(
+                                        c,
+                                        style: TextStyle(
+                                            fontSize: responsiveFont(
+                                                context, 14)),
+                                      ),
+                                    ))
                                     .toList(),
                                 onChanged: (newCategory) {
                                   if (newCategory == null) return;
-                                  if (selected.contains(newCategory) && newCategory != category) {
+                                  if (selected.contains(newCategory) &&
+                                      newCategory != category) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('$newCategory 는 이미 선택된 카테고리입니다.')),
+                                      SnackBar(content: Text(
+                                          '$newCategory 는 이미 선택된 카테고리입니다.')),
                                     );
                                     return;
                                   }
@@ -306,7 +337,9 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                               child: TextField(
                                 controller: controller,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
                                 decoration: InputDecoration(
                                   hintText: '예산을 입력해주세요.',
                                   isDense: true,
@@ -318,7 +351,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                                   filled: true,
                                   fillColor: const Color(0xFFF5F5F5),
                                 ),
-                                style: TextStyle(fontSize: responsiveFont(context, 14)),
+                                style: TextStyle(
+                                    fontSize: responsiveFont(context, 14)),
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
@@ -327,7 +361,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                               flex: 1,
                               child: IconButton(
                                 iconSize: iconSize,
-                                icon: const Icon(Icons.delete, color: Color(0xFFEF9A9A)),
+                                icon: const Icon(
+                                    Icons.delete, color: Color(0xFFEF9A9A)),
                                 onPressed: () => _removeBudgetItem(index),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
@@ -336,10 +371,13 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                           ],
                         ),
                         Padding(
-                          padding: EdgeInsets.only(top: responsiveHeight(context, 4), left: responsiveWidth(context, 4)),
+                          padding: EdgeInsets.only(
+                              top: responsiveHeight(context, 4),
+                              left: responsiveWidth(context, 4)),
                           child: Text(
                             lastMonthTotals.containsKey(category)
-                                ? '지난달 $category에 사용한 금액: ${numberFormat.format(lastMonthTotals[category])}원'
+                                ? '지난달 $category에 사용한 금액: ${numberFormat.format(
+                                lastMonthTotals[category])}원'
                                 : '지난달 $category에 사용한 금액이 없습니다.',
                             style: TextStyle(
                               fontSize: responsiveFont(context, 12),
@@ -370,7 +408,8 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
                       horizontal: responsiveWidth(context, 16),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(responsiveWidth(context, 6)),
+                      borderRadius: BorderRadius.circular(
+                          responsiveWidth(context, 6)),
                     ),
                   ),
                 ),
@@ -386,34 +425,41 @@ class _BudgetCreatingScreenState extends State<BudgetCreatingScreen> {
             SizedBox(height: responsiveHeight(context, 6)),
             Text(
               '지난달 총 소비금액: ${numberFormat.format(lastMonthTotalSpent)}원',
-              style: TextStyle(fontSize: responsiveFont(context, 13), color: Colors.grey),
+              style: TextStyle(
+                  fontSize: responsiveFont(context, 13), color: Colors.grey),
             ),
             Divider(height: responsiveHeight(context, 24)),
             Padding(
               padding: EdgeInsets.only(bottom: responsiveHeight(context, 6)),
               child: Text(
                 '예산 설정 전에 한 번 더 확인해주세요. 설정 후에는 수정이 제한돼요.',
-                style: TextStyle(fontSize: responsiveFont(context, 12), color: Colors.black54),
+                style: TextStyle(fontSize: responsiveFont(context, 9),
+                    color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
             ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saveBudgets,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: responsiveHeight(context, 16)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(responsiveWidth(context, 8)),
-                  ),
-                  textStyle: TextStyle(fontSize: responsiveFont(context, 16)),
-                ),
-                child: const Text('예산 저장하기'),
-              ),
-            ),
           ],
+        ),
+      ),
+
+      bottomNavigationBar: SafeArea(
+        minimum: EdgeInsets.all(responsiveHeight(context, 12)),
+        child: SizedBox(
+          width: double.infinity,
+          height: responsiveHeight(context, 50),
+          child: ElevatedButton(
+            onPressed: _saveBudgets,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                    responsiveWidth(context, 8)),
+              ),
+              textStyle: TextStyle(fontSize: responsiveFont(context, 16)),
+            ),
+            child: const Text('예산 저장하기'),
+          ),
         ),
       ),
     );

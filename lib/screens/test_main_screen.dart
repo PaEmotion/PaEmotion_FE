@@ -7,28 +7,28 @@ class TestMainScreen extends StatelessWidget {
   double _responsiveFont(BuildContext context, double base) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final computed = base * scale;
-    return computed.clamp(base * 0.85, base * 1.4);
+    return computed.clamp(base * 0.75, base * 1.2);
   }
 
   EdgeInsets _responsivePadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 24);
-    if (width < 600) return const EdgeInsets.symmetric(horizontal: 24, vertical: 32);
-    return const EdgeInsets.symmetric(horizontal: 32, vertical: 40);
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 14, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 20, vertical: 20);
+    return const EdgeInsets.symmetric(horizontal: 24, vertical: 24);
   }
 
   double _buttonHeight(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
-    return (height < 600) ? 48 : 54;
+    return (height < 600) ? 44 : 50;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = _responsivePadding(context);
-    final headlineFontSize = _responsiveFont(context, 28);
-    final bodyFontSize = _responsiveFont(context, 16);
-    final buttonFontSize = _responsiveFont(context, 18);
+    final headlineFontSize = _responsiveFont(context, 20);
+    final bodyFontSize = _responsiveFont(context, 12);
+    final buttonFontSize = _responsiveFont(context, 16);
     final buttonHeight = _buttonHeight(context);
 
     return Scaffold(
@@ -50,11 +50,11 @@ class TestMainScreen extends StatelessWidget {
                 fontSize: headlineFontSize,
                 fontWeight: FontWeight.w700,
                 color: Colors.deepPurple.shade900,
-                height: 1.3,
+                height: 1.2,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: padding.vertical / 1.7),
+            SizedBox(height: padding.vertical / 2),
             Text(
               '당신의 소비 습관, 알아보고 싶지 않으신가요?\n'
                   '커피 한 잔, 충동구매, 탕진잼, 덕질, 계획소비까지—\n'
@@ -63,11 +63,11 @@ class TestMainScreen extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: bodyFontSize,
                 color: Colors.grey[700],
-                height: 1.5,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: padding.vertical * 1.2),
+            SizedBox(height: padding.vertical),
             SizedBox(
               width: double.infinity,
               height: buttonHeight,
