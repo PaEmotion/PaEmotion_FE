@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : Text(
                             '로그인',
                             style: TextStyle(
-                              fontSize: fontSize + 2,
+                              fontSize: fontSize,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

@@ -108,9 +108,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('오류가 발생했습니다.')),
-      );
     }
   }
 

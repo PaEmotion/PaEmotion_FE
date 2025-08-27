@@ -68,12 +68,12 @@ class ChallengeService {
         body['password'] = password;
       }
       final response = await ApiClient.dio.post(ChallengeApi.join, data: body);
-      final responseData = response.data['data'];
-      return responseData;
+      return response;
     } on DioException catch (e) {
       return e.response;
     }
   }
+
 
   // 챌린지 검색
   static Future<List<Challenge>?> searchChallenge(String keyword) async {

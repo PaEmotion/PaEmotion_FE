@@ -13,8 +13,10 @@ import 'mypage_screen.dart';
 import 'record_screen.dart';
 import 'record_list_screen.dart';
 import '../models/record.dart';
+import 'test_main_screen.dart';
 import '../constants/api_endpoints/user_api.dart';
 import '../constants/api_endpoints/record_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -85,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Record> _todaysRecords = [];
   String _username = '사용자';
   String _randomGreeting = '';
+  bool _showTestButton = true;
 
   final List<String> _greetingMessages = [
     '오늘도 당신을 응원할게요! 💪',
@@ -110,6 +113,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserFromApi();
     _loadTodayRecords();
     _pickRandomGreeting();
+    _loadTestButtonStatus();
+  }
+
+  Future<void> _loadTestButtonStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _showTestButton = prefs.getBool('showTestButton') ?? true;
+    });
+  }
+
+  Future<void> _hideTestButton() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('showTestButton', false);
+    setState(() {
+      _showTestButton = false;
+    });
   }
 
   void _pickRandomGreeting() {
@@ -244,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
               sectionsSpace: 4,
               startDegreeOffset: -90,
             )),
-            Text(centerEmoji, style: TextStyle(fontSize: screenWidth * 0.12)),
+            Text(centerEmoji, style: TextStyle(fontSize: screenWidth * 0.08)),
           ],
         ),
       ),
@@ -253,8 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final titleFontSize = screenWidth * 0.06;
-    final bodyFontSize = screenWidth * 0.040;
+    final titleFontSize = screenWidth * 0.045;
+    final bodyFontSize = screenWidth * 0.03;
     final numberFormat = NumberFormat('#,###');
     final totalAmount = _todaysRecords.fold(0, (sum, r) => sum + r.spendCost);
     final topCategory = _getTopCategory(_todaysRecords);
@@ -262,7 +281,38 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(height: screenWidth * 0.05),
+        // 소비 유형 테스트 홍보 버튼
+        if (_showTestButton)
+          Padding(
+            padding: EdgeInsets.only(top: screenWidth * 0.03, bottom: screenWidth * 0.04),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.deepPurple, width: 1.2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.025),
+                  backgroundColor: Colors.deepPurple.withOpacity(0.05),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TestMainScreen()),
+                  );
+                  _hideTestButton();
+                },
+                child: Text(
+                  "나의 소비 유형은 무엇일까? 테스트 하러 가기✨",
+                  style: TextStyle(
+                    fontSize: bodyFontSize,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.deepPurple,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        SizedBox(height: screenWidth * 0.02),
         Text(
           '$_username님, 안녕하세요! 😊\n$_randomGreeting',
           style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w600),
@@ -328,8 +378,8 @@ class _HomeScreenState extends State<HomeScreen> {
         SizedBox(height: screenWidth * 0.08),
         if (_todaysRecords.isNotEmpty) ...[
           Text('📝 오늘의 소비 기록',
-              style: TextStyle(fontSize: screenWidth * 0.05, fontWeight: FontWeight.bold)),
-          SizedBox(height: screenWidth * 0.02),
+              style: TextStyle(fontSize: screenWidth * 0.04, fontWeight: FontWeight.bold)),
+          SizedBox(height: screenWidth * 0.03),
           ..._todaysRecords.map((record) {
             final emotionId = record.emotion_category;
             final emotionName = emotionMap[emotionId] ?? '';
@@ -357,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       TextStyle(fontSize: screenWidth * 0.032, fontWeight: FontWeight.bold)),
                 ]),
                 SizedBox(height: screenWidth * 0.015),
-                Text('$catName - ${record.spendItem}', style: TextStyle(fontSize: screenWidth * 0.04)),
+                Text('$catName - ${record.spendItem}', style: TextStyle(fontSize: screenWidth * 0.03)),
                 SizedBox(height: screenWidth * 0.015),
                 Align(
                   alignment: Alignment.bottomRight,

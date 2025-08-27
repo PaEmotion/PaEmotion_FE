@@ -27,7 +27,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   double _responsiveFont(double base, BuildContext context) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final computed = base * scale;
-    return computed.clamp(base * 0.9, base * 1.3);
+    return computed.clamp(base * 0.5, base * 0.9);
   }
 
   EdgeInsets _contentPadding(BuildContext context) {
@@ -215,7 +215,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       leading: Icon(Icons.logout),
                       title: Text('로그아웃'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: _logout,
+                      onTap: () async {
+                        final shouldLogout = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('로그아웃'),
+                            content: const Text('정말 로그아웃 하시겠습니까?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('취소'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: const Text('로그아웃'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (shouldLogout == true) {
+                          await _logout();
+                        }
+                      },
                     ),
                   ],
                 ),

@@ -33,14 +33,14 @@ class _TestQuestionScreenState extends State<TestQuestionScreen> {
   double _responsiveFontSize(BuildContext context, double baseSize) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final computed = baseSize * scale;
-    return computed.clamp(baseSize * 0.85, baseSize * 1.4);
+    return computed.clamp(baseSize * 0.75, baseSize * 1.2);
   }
 
   EdgeInsets _responsivePadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < 360) return const EdgeInsets.symmetric(horizontal: 12, vertical: 20);
-    if (width < 600) return const EdgeInsets.symmetric(horizontal: 20, vertical: 28);
-    return const EdgeInsets.symmetric(horizontal: 24, vertical: 32);
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 12, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 16, vertical: 20);
+    return const EdgeInsets.symmetric(horizontal: 20, vertical: 24);
   }
 
   double _maxChoiceWidth(BuildContext context) {
@@ -54,16 +54,16 @@ class _TestQuestionScreenState extends State<TestQuestionScreen> {
   Widget build(BuildContext context) {
     final question = testQuestions[currentIndex];
     final padding = _responsivePadding(context);
-    final questionNumberFontSize = _responsiveFontSize(context, 22);
-    final questionTextFontSize = _responsiveFontSize(context, 20);
-    final choiceTextFontSize = _responsiveFontSize(context, 16);
+    final questionNumberFontSize = _responsiveFontSize(context, 18);
+    final questionTextFontSize = _responsiveFontSize(context, 16);
+    final choiceTextFontSize = _responsiveFontSize(context, 14);
     final maxChoiceWidth = _maxChoiceWidth(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           '소비성향 테스트',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -73,7 +73,6 @@ class _TestQuestionScreenState extends State<TestQuestionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 질문 번호 + 총 개수
             Text(
               'Q${currentIndex + 1}.',
               style: TextStyle(
@@ -82,27 +81,25 @@ class _TestQuestionScreenState extends State<TestQuestionScreen> {
                 color: Colors.deepPurple[700],
               ),
             ),
-            SizedBox(height: padding.vertical / 4),
+            SizedBox(height: padding.vertical / 5),
 
-            // 질문 텍스트
             Text(
               question.questionText,
               style: TextStyle(
                 fontSize: questionTextFontSize,
-                height: 1.5,
+                height: 1.3,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: padding.vertical / 1.1),
+            SizedBox(height: padding.vertical / 1.5),
 
-            // 선택지
             Expanded(
               child: ListView.builder(
                 itemCount: question.choices.length,
                 itemBuilder: (context, idx) {
                   final choice = question.choices[idx];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () => selectChoice(choice.traitKey),
@@ -110,8 +107,8 @@ class _TestQuestionScreenState extends State<TestQuestionScreen> {
                       child: Container(
                         constraints: BoxConstraints(maxWidth: maxChoiceWidth),
                         padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 20,
+                          vertical: 12,
+                          horizontal: 16,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,

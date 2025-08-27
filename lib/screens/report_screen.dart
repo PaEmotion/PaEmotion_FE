@@ -29,7 +29,7 @@ class _ReportScreenState extends State<ReportScreen>  {
     final userId = userProfile['userId'] as int?;
     if (userId == null) return;
 
-    final releaseDate = DateTime(2025, 9, 1);
+    final releaseDate = DateTime(2025, 4, 1);
     final today = DateTime.now();
 
     final startDateStr = DateFormat('yyyy-MM-dd').format(releaseDate);
@@ -43,7 +43,6 @@ class _ReportScreenState extends State<ReportScreen>  {
 
     await ReportUtils.saveReportsSmartly(reports);
   }
-
 
 
   @override
@@ -62,19 +61,19 @@ class _ReportScreenState extends State<ReportScreen>  {
 
           if (width < 350) {
             titleFontSize = 20;
-            subtitleFontSize = 12;
+            subtitleFontSize = 8;
             verticalSpacing = 24;
             buttonHeight = 80;
             horizontalPadding = 12;
           } else if (width < 600) {
             titleFontSize = 24;
-            subtitleFontSize = 14;
+            subtitleFontSize = 10;
             verticalSpacing = 28;
             buttonHeight = 90;
             horizontalPadding = 16;
           } else {
             titleFontSize = 28;
-            subtitleFontSize = 16;
+            subtitleFontSize = 12;
             verticalSpacing = 32;
             buttonHeight = 100;
             horizontalPadding = 24;
