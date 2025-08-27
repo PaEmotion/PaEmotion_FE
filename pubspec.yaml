@@ -59,6 +59,7 @@ dependencies:
   introduction_screen: ^3.1.17
   provider: ^6.0.5
   flutter_dotenv: ^5.1.0
+  webview_flutter: ^4.2.2
 
 
 dev_dependencies:
@@ -136,6 +137,7 @@ flutter:
       - lib/assets/onboarding3.png
       - lib/assets/onboarding4.png
       - lib/assets/onboarding5.png
+      - .env
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
