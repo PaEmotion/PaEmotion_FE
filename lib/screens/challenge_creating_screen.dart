@@ -117,91 +117,96 @@ class _ChallengeCreatingScreenState extends State<ChallengeCreatingScreen> {
         foregroundColor: Colors.black,
         elevation: 1,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(horizontalPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: spacingMedium),
-            Text(
-              '챌린지 유형을 선택해주세요.',
-              style: TextStyle(
-                fontWeight: FontWeight.normal,
-                fontSize: rFont(16),
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: spacingSmall),
-            Row(
-              children: [
-                _buildRadio('공개', 'public', _challengeType, (val) {
-                  setState(() => _challengeType = val);
-                }),
-                SizedBox(width: rWidth(16)),
-                _buildRadio('비공개 (프라이빗)', 'private', _challengeType, (val) {
-                  setState(() => _challengeType = val);
-                }),
-              ],
-            ),
-            SizedBox(height: spacingLarge),
-            Text(
-              '챌린지의 컨셉을 선택해주세요.',
-              style: TextStyle(
-                fontWeight: FontWeight.normal,
-                fontSize: rFont(16),
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: spacingSmall),
-            _buildRadioWithDesc(
-              '기니피그 밥 주기',
-              'feed',
-              '긍정적 감정으로 인한 소비를 늘리는 목표를 달성하고\n기니피그에게 밥을 주는 챌린지',
-              _concept,
-                  (val) {
-                setState(() {
-                  _concept = val;
-                });
-              },
-              fontSizeLabel: rFont(16),
-              fontSizeDesc: rFont(12),
-              descPadding: rWidth(40),
-            ),
-            SizedBox(height: spacingSmall),
-            _buildRadioWithDesc(
-              '기니피그 밥 지켜주기',
-              'protect',
-              '부정적 감정으로 인한 소비를 줄이는 목표를 달성하고\n기니피그의 밥을 지켜주는 챌린지',
-              _concept,
-                  (val) {
-                setState(() {
-                  _concept = val;
-                });
-              },
-              fontSizeLabel: rFont(16),
-              fontSizeDesc: rFont(12),
-              descPadding: rWidth(40),
-            ),
-            if (_challengeType != null && _concept != null) _buildDetailsForm(borderRadius, spacingLarge, spacingSmall),
-            SizedBox(height: rHeight(40)),
-            if (_challengeType != null && _concept != null)
-              SizedBox(
-                width: double.infinity,
-                height: buttonHeight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(buttonRadius)),
-                  ),
-                  onPressed: _handleCreate,
-                  child: Text(
-                    '챌린지 생성하기',
-                    style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w600),
-                  ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: spacingMedium),
+              Text(
+                '챌린지 유형을 선택해주세요.',
+                style: TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: rFont(16),
+                  color: Colors.black87,
                 ),
               ),
-          ],
+              SizedBox(height: spacingSmall),
+              Row(
+                children: [
+                  _buildRadio('공개', 'public', _challengeType, (val) {
+                    setState(() => _challengeType = val);
+                  }),
+                  SizedBox(width: rWidth(16)),
+                  _buildRadio('비공개 (프라이빗)', 'private', _challengeType, (val) {
+                    setState(() => _challengeType = val);
+                  }),
+                ],
+              ),
+              SizedBox(height: spacingLarge),
+              Text(
+                '챌린지의 컨셉을 선택해주세요.',
+                style: TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: rFont(16),
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: spacingSmall),
+              _buildRadioWithDesc(
+                '기니피그 밥 주기',
+                'feed',
+                '긍정적 감정으로 인한 소비를 늘리는 목표를 달성하고\n기니피그에게 밥을 주는 챌린지',
+                _concept,
+                    (val) {
+                  setState(() {
+                    _concept = val;
+                  });
+                },
+                fontSizeLabel: rFont(16),
+                fontSizeDesc: rFont(12),
+                descPadding: rWidth(40),
+              ),
+              SizedBox(height: spacingSmall),
+              _buildRadioWithDesc(
+                '기니피그 밥 지켜주기',
+                'protect',
+                '부정적 감정으로 인한 소비를 줄이는 목표를 달성하고\n기니피그의 밥을 지켜주는 챌린지',
+                _concept,
+                    (val) {
+                  setState(() {
+                    _concept = val;
+                  });
+                },
+                fontSizeLabel: rFont(16),
+                fontSizeDesc: rFont(12),
+                descPadding: rWidth(40),
+              ),
+              if (_challengeType != null && _concept != null)
+                _buildDetailsForm(borderRadius, spacingLarge, spacingSmall),
+              SizedBox(height: rHeight(20)),
+              if (_challengeType != null && _concept != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: buttonHeight,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(buttonRadius)),
+                    ),
+                    onPressed: _handleCreate,
+                    child: Text(
+                      '챌린지 생성하기',
+                      style: TextStyle(fontSize: rFont(16), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ],
+          ),
         ),
       ),
     );
