@@ -62,7 +62,6 @@ dependencies:
   webview_flutter: ^4.2.2
 
 
-
 dev_dependencies:
   build_runner: ^2.4.6
   json_serializable: ^6.7.1
@@ -138,6 +137,7 @@ flutter:
       - lib/assets/onboarding3.png
       - lib/assets/onboarding4.png
       - lib/assets/onboarding5.png
+      - .env
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
