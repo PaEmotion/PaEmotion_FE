@@ -193,40 +193,26 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
       return;
     }
 
+    final body = res.data;
+    String msg;
+
     if (res.statusCode == 200) {
-      final json = res.data;
-      final serverMessage = json['message'] ?? '챌린지 참여 성공!';
+      // 성공 메시지
+      msg = body['message'] ?? '챌린지 참여 성공!';
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(serverMessage)),
+        SnackBar(content: Text(msg)),
       );
-
-      _tabController.animateTo(0);
 
       await _loadMyChallenge();
       await _loadAllChallenges();
-
       return;
     }
 
-    String msg = '챌린지 참여 실패';
-    final body = res.data;
-
     if (body is Map) {
-      msg = (body['detail'] ?? body['message'] ?? msg).toString();
-    } else if (body is String) {
-      try {
-        final parsed = jsonDecode(body);
-        if (parsed is Map && parsed['detail'] != null) {
-          msg = parsed['detail'].toString();
-        } else if (parsed is Map && parsed['message'] != null) {
-          msg = parsed['message'].toString();
-        } else {
-          msg = body;
-        }
-      } catch (_) {
-        msg = body;
-      }
+      msg = (body['detail'] ?? '챌린지 참여 실패').toString();
+    } else {
+      msg = body.toString();
     }
 
     if (!mounted) return;
