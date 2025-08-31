@@ -16,6 +16,7 @@ class BudgetScreen extends StatefulWidget {
 }
 
 class _BudgetScreenState extends State<BudgetScreen> {
+  bool _isLoading = true;
   int? _totalBudget;
   int? _totalSpending;
   late String _currentMonth;
@@ -47,7 +48,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _loadData() async {
     final startOfMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     final endOfMonth = DateTime.now().add(const Duration(days: 1));
-
     final budgetMonthStr = DateFormat('yyyy-MM-dd').format(startOfMonth);
 
     try {
@@ -56,6 +56,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
         BudgetApi.me,
         queryParameters: {'budgetMonth': budgetMonthStr},
       );
+
+      print("💡 _loadData() 호출 - budgetMonth: $budgetMonthStr");
+      print("💡 GET BudgetApi.me 응답 상태: ${budgetRes.statusCode}");
+      print("💡 응답 데이터 전체: ${budgetRes.data}");
+
       final body = budgetRes.data;
       final budgetData = body['data'] ?? {};
 
@@ -66,38 +71,49 @@ class _BudgetScreenState extends State<BudgetScreen> {
           _totalSpending = null;
           _categorySpendings = {};
           _predictedSpending = null;
+          _isLoading = false;
         });
         return;
       }
 
+      // 예산 데이터 가공
       final int totalAmount = budgetData['totalAmount'] ?? 0;
       final List categoryList = budgetData['categoryBudget'];
-
       final Map<int, int> categoryBudgets = {
         for (var item in categoryList)
           (item['spendCategoryId'] as int): (item['amount'] as int),
       };
+      print("💡 totalAmount: $totalAmount");
+      print("💡 categoryBudget 리스트: $categoryList");
 
-      // 현재 달 소비 기록 불러오기
+      // 소비 기록 조회
       List<Record> records = await fetchRecordsInRange(startOfMonth, endOfMonth);
-
-      // 카테고리별 소비 합산
       Map<int, int> categorySpendings = {};
       int totalSpending = 0;
-
       for (var record in records) {
         final catId = record.spend_category;
         final amount = record.spendCost;
         categorySpendings[catId] = (categorySpendings[catId] ?? 0) + amount;
         totalSpending += amount;
       }
+      print("💡 totalSpending: $totalSpending");
+      print("💡 categorySpendings: $categorySpendings");
 
-      final response = await ApiClient.dio.get(MlApi.predictBudget);
-      final data = response.data['data'];
-      final String predictionStr = data['예측'];
-      final numericString = predictionStr.replaceAll(RegExp(r'[^0-9]'), '');
-      final double? prediction = double.tryParse(numericString);
+      // ML 예측 지출 조회 (실패해도 무시)
+      double? prediction;
+      try {
+        final response = await ApiClient.dio.get(MlApi.predictBudget);
+        final data = response.data['data'];
+        final String predictionStr = data['예측'];
+        final numericString = predictionStr.replaceAll(RegExp(r'[^0-9]'), '');
+        prediction = double.tryParse(numericString);
+        print("💡 ML 예측 지출: $prediction");
+      } catch (e) {
+        print("⚠️ 예측 지출 가져오기 실패: $e");
+        prediction = null;
+      }
 
+      // 화면에 상태 반영
       if (mounted) {
         setState(() {
           _totalBudget = totalAmount;
@@ -105,15 +121,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
           _totalSpending = totalSpending;
           _categorySpendings = categorySpendings;
           _predictedSpending = prediction;
+          _isLoading = false;
         });
       }
     } catch (e) {
+      print("❌ _loadData() 예외 발생: $e");
+      setState(() {
+        _totalBudget = null;
+        _categoryBudgets = {};
+        _totalSpending = null;
+        _categorySpendings = {};
+        _predictedSpending = null;
+        _isLoading = false;
+      });
     }
   }
 
   Future<List<Record>> fetchRecordsInRange(DateTime start, DateTime end) async {
     final dio = ApiClient.dio;
-
     try {
       final res = await dio.get(RecordApi.list, queryParameters: {
         'startDate': DateFormat('yyyy-MM-dd').format(start),
@@ -144,6 +169,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 로딩 상태 분기 처리
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _totalBudget == null
@@ -294,8 +326,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             fontSize: baseFontSize + 2,
                           ),
                         ),
-                        progressColor:
-                        spendingPercent > 1.0 ? Colors.orangeAccent : Colors.green,
+                        progressColor: spendingPercent > 1.0
+                            ? Colors.orangeAccent
+                            : Colors.green,
                         backgroundColor: Colors.grey.shade300,
                         animation: true,
                         animationDuration: 600,
