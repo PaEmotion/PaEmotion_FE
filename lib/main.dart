@@ -16,6 +16,9 @@ import 'screens/deeplinkpasswordscreen.dart';
 import 'api/api_client.dart';
 import 'screens/onboarding.dart';
 import 'utils/email_verification_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/fcm_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -37,6 +40,12 @@ void main() async {
   await UserManager().init();
   ApiClient.initInterceptor(navigatorKey);
   await ApiClient.ensureValidAccessToken();
+
+  // Firebase 초기화
+  await Firebase.initializeApp();
+
+  // FCM Token전송
+  await FCMService.initFCM();
 
   runApp(
     MultiProvider(
