@@ -31,7 +31,6 @@ class _TestResultScreenState extends State<TestResultScreen> {
   Future<void> _saveResult() async {
     final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now().toIso8601String();
-
     await prefs.setString('last_test_result_key', topTraitKey);
     await prefs.setString('last_test_result_time', now);
   }
@@ -46,29 +45,29 @@ class _TestResultScreenState extends State<TestResultScreen> {
   double _responsiveFontSize(BuildContext context, double baseSize) {
     final scale = MediaQuery.of(context).textScaleFactor;
     final computed = baseSize * scale;
-    return computed.clamp(baseSize * 0.8, baseSize * 1.5);
+    return computed.clamp(baseSize * 0.75, baseSize * 1.2);
   }
 
   double _responsiveWidth(BuildContext context, double baseWidth) {
     final width = MediaQuery.of(context).size.width;
     if (width < 360) return baseWidth * 0.7;
     if (width < 480) return baseWidth * 0.85;
-    if (width > 700) return baseWidth * 1.1;
+    if (width > 700) return baseWidth * 1.0;
     return baseWidth;
   }
 
   EdgeInsets _responsivePadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 20);
-    if (width < 600) return const EdgeInsets.symmetric(horizontal: 24, vertical: 32);
-    return const EdgeInsets.symmetric(horizontal: 28, vertical: 36);
+    if (width < 360) return const EdgeInsets.symmetric(horizontal: 16, vertical: 16);
+    if (width < 600) return const EdgeInsets.symmetric(horizontal: 20, vertical: 24);
+    return const EdgeInsets.symmetric(horizontal: 24, vertical: 28);
   }
 
   double _responsiveButtonHeight(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width < 360) return 44;
-    if (width < 600) return 52;
-    return 60;
+    if (width < 600) return 50;
+    return 54;
   }
 
   @override
@@ -79,19 +78,23 @@ class _TestResultScreenState extends State<TestResultScreen> {
     );
 
     final padding = _responsivePadding(context);
-    final imageSize = _responsiveWidth(context, 260);
-    final titleFontSize = _responsiveFontSize(context, 30);
-    final descFontSize = _responsiveFontSize(context, 15);
-    final summaryFontSize = _responsiveFontSize(context, 20);
+    final imageSize = _responsiveWidth(context, 220);
+    final titleFontSize = _responsiveFontSize(context, 24);
+    final descFontSize = _responsiveFontSize(context, 14);
+    final summaryFontSize = _responsiveFontSize(context, 18);
     final buttonHeight = _responsiveButtonHeight(context);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('소비성향 테스트 결과'),
+        title: const Text(
+          '소비성향 테스트 결과',
+          style: TextStyle(color: Colors.black),
+        ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -102,7 +105,7 @@ class _TestResultScreenState extends State<TestResultScreen> {
               Text(
                 '당신의 소비 유형은?',
                 style: TextStyle(
-                  fontSize: _responsiveFontSize(context, 24),
+                  fontSize: _responsiveFontSize(context, 20),
                   fontWeight: FontWeight.w700,
                   color: Colors.deepPurple,
                   letterSpacing: 0.5,
@@ -114,15 +117,15 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 decoration: BoxDecoration(
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.deepPurple.withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      color: Colors.deepPurple.withOpacity(0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   child: Image.asset(
                     trait.imagePath,
                     width: imageSize,
@@ -143,20 +146,18 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
-              SizedBox(height: padding.vertical * 0.85),
+              SizedBox(height: padding.vertical * 0.7),
 
               Text(
                 trait.description,
                 style: TextStyle(
                   fontSize: descFontSize,
-                  height: 1.6,
+                  height: 1.5,
                   color: Colors.grey[800],
                 ),
                 textAlign: TextAlign.center,
               ),
-
-              SizedBox(height: padding.vertical * 1.2),
+              SizedBox(height: padding.vertical * 1.0),
 
               Text(
                 trait.summary,
@@ -168,8 +169,7 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
-              SizedBox(height: padding.vertical * 1.8),
+              SizedBox(height: padding.vertical * 1.5),
 
               SizedBox(
                 width: double.infinity,
@@ -177,20 +177,20 @@ class _TestResultScreenState extends State<TestResultScreen> {
                 child: ElevatedButton(
                   onPressed: _restartTest,
                   style: ButtonStyle(
-                    backgroundColor:
-                    MaterialStateProperty.all(Colors.deepPurple),
+                    backgroundColor: MaterialStateProperty.all(Colors.deepPurple),
                     shape: MaterialStateProperty.all(RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     )),
-                    elevation: MaterialStateProperty.all(6),
+                    elevation: MaterialStateProperty.all(4),
                     shadowColor: MaterialStateProperty.all(
-                        Colors.deepPurple.withOpacity(0.5)),
+                        Colors.deepPurple.withOpacity(0.4)),
                   ),
                   child: Text(
                     '테스트 다시하기',
                     style: TextStyle(
                       fontSize: summaryFontSize,
                       fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),

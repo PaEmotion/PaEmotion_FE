@@ -193,36 +193,26 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
       return;
     }
 
+    final body = res.data;
+    String msg;
+
     if (res.statusCode == 200) {
+      // 성공 메시지
+      msg = body['message'] ?? '챌린지 참여 성공!';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+
       await _loadMyChallenge();
       await _loadAllChallenges();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('챌린지 참여 성공!')),
-      );
-      _tabController.animateTo(0);
       return;
     }
 
-    String msg = '챌린지 참여 실패';
-    final body = res.data;
-
     if (body is Map) {
-      msg = (body['detail'] ?? body['message'] ?? msg).toString();
-    } else if (body is String) {
-      try {
-        final parsed = jsonDecode(body);
-        if (parsed is Map && parsed['detail'] != null) {
-          msg = parsed['detail'].toString();
-        } else if (parsed is Map && parsed['message'] != null) {
-          msg = parsed['message'].toString();
-        } else {
-          msg = body;
-        }
-      } catch (_) {
-        msg = body;
-      }
+      msg = (body['detail'] ?? '챌린지 참여 실패').toString();
+    } else {
+      msg = body.toString();
     }
 
     if (!mounted) return;
@@ -243,30 +233,20 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
   }
 
   double rWidth(BuildContext context, double base) {
-    final w = MediaQuery
-        .of(context)
-        .size
-        .width;
-    return base * (w / 390);
+    final w = MediaQuery.of(context).size.width;
+    return base * (w / 390) * 0.9;
   }
 
   double rHeight(BuildContext context, double base) {
-    final h = MediaQuery
-        .of(context)
-        .size
-        .height;
-    return base * (h / 844);
+    final h = MediaQuery.of(context).size.height;
+    return base * (h / 844) * 0.9;
   }
 
   double rFont(BuildContext context, double base) {
-    final scale = MediaQuery
-        .of(context)
-        .textScaleFactor;
-    return base * scale * (MediaQuery
-        .of(context)
-        .size
-        .width / 390);
+    final scale = MediaQuery.of(context).textScaleFactor;
+    return base * scale * (MediaQuery.of(context).size.width / 390) * 0.9;
   }
+
 
   Widget _buildMyChallengeTab() {
     if (_isLoadingMyChallenge) {
@@ -483,7 +463,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
               Text(
                 '참여자 공헌도',
                 style: TextStyle(
-                  fontSize: rFont(context, 18),
+                  fontSize: rFont(context, 15),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -491,7 +471,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
               if (myGuineaName != null)
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: rWidth(context, 10),
+                    horizontal: rWidth(context, 12),
                     vertical: rHeight(context, 6),
                   ),
                   decoration: BoxDecoration(
@@ -502,7 +482,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> with SingleTickerProv
                   child: Text(
                     '내 기니피그: $myGuineaName',
                     style: TextStyle(fontWeight: FontWeight.w600,
-                        fontSize: rFont(context, 14)),
+                        fontSize: rFont(context, 8)),
                   ),
                 ),
             ],

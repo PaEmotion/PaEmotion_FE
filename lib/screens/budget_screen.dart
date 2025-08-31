@@ -51,7 +51,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final budgetMonthStr = DateFormat('yyyy-MM-dd').format(startOfMonth);
 
     try {
-      // 1️⃣ 예산 데이터 조회
+      // 예산 데이터 조회
       final budgetRes = await ApiClient.dio.get(
         BudgetApi.me,
         queryParameters: {'budgetMonth': budgetMonthStr},
@@ -76,7 +76,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         return;
       }
 
-      // 2️⃣ 예산 데이터 가공
+      // 예산 데이터 가공
       final int totalAmount = budgetData['totalAmount'] ?? 0;
       final List categoryList = budgetData['categoryBudget'];
       final Map<int, int> categoryBudgets = {
@@ -86,7 +86,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       print("💡 totalAmount: $totalAmount");
       print("💡 categoryBudget 리스트: $categoryList");
 
-      // 3️⃣ 소비 기록 조회
+      // 소비 기록 조회
       List<Record> records = await fetchRecordsInRange(startOfMonth, endOfMonth);
       Map<int, int> categorySpendings = {};
       int totalSpending = 0;
@@ -99,7 +99,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       print("💡 totalSpending: $totalSpending");
       print("💡 categorySpendings: $categorySpendings");
 
-      // 4️⃣ ML 예측 지출 조회 (실패해도 무시)
+      // ML 예측 지출 조회 (실패해도 무시)
       double? prediction;
       try {
         final response = await ApiClient.dio.get(MlApi.predictBudget);
@@ -113,7 +113,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         prediction = null;
       }
 
-      // 5️⃣ 화면에 상태 반영
+      // 화면에 상태 반영
       if (mounted) {
         setState(() {
           _totalBudget = totalAmount;
