@@ -210,8 +210,7 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
 
               final response = await ChallengeService.joinChallenge(
                 challengeId: challenge.challengeId,
-                password:
-                challenge.publicityType ? null : passwordController.text.trim(),
+                password: challenge.publicityType ? null : passwordController.text.trim(),
               );
 
               if (response == null) {
@@ -222,29 +221,25 @@ class _ChallengeSearchScreenState extends State<ChallengeSearchScreen> {
                 return;
               }
 
+              final body = response.data;
+
               if (response.statusCode == 200) {
-                Navigator.pop(context, {'joined': true, 'msg': '챌린지에 참여했습니다!'});
-              } else {
-                String msg = '챌린지 참여에 실패했습니다.';
-                final body = response.data;
-                if (body is Map) {
-                  msg = (body['detail'] ?? body['message'] ?? msg).toString();
-                } else if (body is String) {
-                  try {
-                    final parsed = jsonDecode(body);
-                    if (parsed is Map && parsed['detail'] != null) {
-                      msg = parsed['detail'].toString();
-                    } else if (parsed is Map && parsed['message'] != null) {
-                      msg = parsed['message'].toString();
-                    } else {
-                      msg = body;
-                    }
-                  } catch (_) {
-                    msg = body;
-                  }
-                }
-                Navigator.pop(context, {'joined': false, 'msg': msg});
+                Navigator.pop(context, {
+                  'joined': true,
+                  'msg': body['message'] ?? '챌린지에 참여했습니다!',
+                });
+                return;
               }
+
+              // 실패 처리
+              String msg = '챌린지 참여에 실패했습니다.';
+              if (body is Map) {
+                msg = (body['detail'] ?? body['message'] ?? msg).toString();
+              } else {
+                msg = body.toString();
+              }
+
+              Navigator.pop(context, {'joined': false, 'msg': msg});
             },
             child: Text('참여하기', style: TextStyle(fontSize: rFont(context, 14))),
           ),
