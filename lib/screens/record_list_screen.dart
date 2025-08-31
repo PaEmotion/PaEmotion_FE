@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/record.dart';
 import 'record_edit_screen.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/record_api.dart';
 
 const Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -43,7 +44,7 @@ class _RecordListScreenState extends State<RecordListScreen> {
       final tomorrow = today.add(const Duration(days: 1));
 
       final response = await ApiClient.dio.get(
-        '/records/me',
+        RecordApi.list,
         queryParameters: {
           'startDate': DateFormat('yyyy-MM-dd').format(today),
           'endDate': DateFormat('yyyy-MM-dd').format(tomorrow),

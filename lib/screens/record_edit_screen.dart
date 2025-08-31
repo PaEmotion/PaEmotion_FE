@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/record.dart';
 import '../api/api_client.dart';
+import '../constants/api_endpoints/record_api.dart';
 
 const Map<int, String> categoryMap = {
   1: '쇼핑',
@@ -107,7 +108,7 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
 
     try {
       final response = await ApiClient.dio.put(
-        '/records/me/${widget.record.spendId}',
+        RecordApi.update(widget.record.spendId),
         data: {
           "spendItem": _itemController.text.trim(),
           "spendCost": int.parse(_amountController.text.trim()),
@@ -157,7 +158,8 @@ class _RecordEditScreenState extends State<RecordEditScreen> {
 
     try {
       final response =
-      await ApiClient.dio.delete('/records/me/${widget.record.spendId}');
+      await ApiClient.dio.delete(
+          RecordApi.delete(widget.record.spendId));
 
       if (response.statusCode == 200) {
         Navigator.pop(context, true);

@@ -264,19 +264,19 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         double pieHeight;
 
         if (width < 350) {
-          titleFontSize = 18;
+          titleFontSize = 16;
           smallFontSize = 12;
           sectionSpacing = 16;
           contentPadding = 16;
           pieHeight = 150;
         } else if (width < 600) {
-          titleFontSize = 22;
+          titleFontSize = 20;
           smallFontSize = 14;
           sectionSpacing = 20;
           contentPadding = 20;
           pieHeight = 180;
         } else {
-          titleFontSize = 26;
+          titleFontSize = 24;
           smallFontSize = 16;
           sectionSpacing = 24;
           contentPadding = 24;
@@ -341,7 +341,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${DateFormat('yyyy년 M월 d일').format(_selectedDate)} 소비 리포트',
+                      '${DateFormat('yyyy년 M월 d일').format(_selectedDate)} 소비 내역',
                       style: TextStyle(
                         fontSize: titleFontSize,
                         fontWeight: FontWeight.bold,
